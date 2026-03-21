@@ -10,7 +10,7 @@ jobs:
   build:
     uses: ./.github/workflows/ci.yml
     permissions:
-      contents: write
+      contents: read
 
   release:
     needs: build
@@ -44,9 +44,9 @@ jobs:
         shell: bash
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          PUBSPEC_VERSION=${{ steps.get_version.outputs.version }}
-          if [ "$TAG_VERSION" != "$PUBSPEC_VERSION" ]; then
-            echo "Error: Tag version (v$TAG_VERSION) does not match pyproject.toml version ($PUBSPEC_VERSION)"
+          PROJECT_VERSION=${{ steps.get_version.outputs.version }}
+          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
+            echo "Error: Tag version (v$TAG_VERSION) does not match pyproject.toml version ($PROJECT_VERSION)"
             exit 1
           fi
           echo "Success: Tag v$TAG_VERSION matches project version!"
