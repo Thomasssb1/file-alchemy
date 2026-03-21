@@ -54,7 +54,7 @@ jobs:
       - name: Build Windows Executable
         if: steps.get_version.outputs.version != '0.0.0'
         run: |
-          pyinstaller --name "File Alchemy" --icon=assets/logo.ico --windowed src/file_alchemy/app.py
+          pyinstaller --name "File Alchemy" --onefile --icon=assets/logo.ico --windowed src/file_alchemy/app.py
 
       - name: Rename executable for release
         if: steps.get_version.outputs.version != '0.0.0'
