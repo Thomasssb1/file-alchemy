@@ -1,0 +1,79 @@
+"""Main application window — FluentWindow with sidebar navigation."""
+
+import sys
+from pathlib import Path
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from qfluentwidgets import (
+    FluentIcon,
+    FluentWindow,
+    NavigationItemPosition,
+)
+
+
+class PlaceholderPage(QWidget):
+    """Temporary placeholder page shown inside navigation tabs."""
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName(title.replace(" ", "_"))
+
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        label = QLabel(title)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("font-size: 24px; color: #888;")
+        layout.addWidget(label)
+
+
+class MainWindow(FluentWindow):
+    """Top-level window with Fluent sidebar navigation."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._setup_window()
+        self._setup_navigation()
+
+    def _set_icon(self) -> None:
+        try:
+            base_path = Path(sys._MEIPASS)
+        except AttributeError:
+            base_path = Path(__file__).resolve().parent.parent.parent.parent
+
+        icon_path = base_path / "assets" / "logo.ico"
+        self.setWindowIcon(QIcon(str(icon_path)))
+
+    def _setup_window(self) -> None:
+        self.setWindowTitle("File Alchemy")
+        self._set_icon()
+        self.resize(1000, 650)
+
+        # Centre on screen
+        screen = self.screen()
+        if screen:
+            geo = screen.availableGeometry()
+            self.move(
+                (geo.width() - self.width()) // 2,
+                (geo.height() - self.height()) // 2,
+            )
+
+    def _setup_navigation(self) -> None:
+        # --- Top-level pages (placeholders for now) ---
+        self._media_page = PlaceholderPage("Media Converter")
+        self.addSubInterface(
+            self._media_page,
+            FluentIcon.VIDEO,
+            "Media",
+        )
+
+        # --- Bottom-pinned settings page ---
+        self._settings_page = PlaceholderPage("Settings")
+        self.addSubInterface(
+            self._settings_page,
+            FluentIcon.SETTING,
+            "Settings",
+            position=NavigationItemPosition.BOTTOM,
+        )
