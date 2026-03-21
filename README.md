@@ -33,7 +33,7 @@ To bundle the application into a standalone `.exe` file that you can share on Gi
 Run this command from the root of the project:
 
 ```bash
-.venv\Scripts\pyinstaller --name "File Alchemy" --icon=assets/logo.ico --windowed src/file_alchemy/app.py
+.venv\Scripts\pyinstaller --name "File Alchemy" --onefile --icon=assets/logo.ico --windowed src/file_alchemy/app.py
 ```
 
 - The final `.exe` will be generated inside the `dist/` folder.
