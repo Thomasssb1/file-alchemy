@@ -12,6 +12,70 @@ jobs:
     permissions:
       contents: read
 
+  update-badge:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Download coverage data
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data
+
+      - name: Update Coverage Badge in README
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$(git rev-parse HEAD)" != "${{ github.sha }}" ]; then
+            echo "Skipping update: Tag commit (${{ github.sha }}) does not match the tip of main ($(git rev-parse HEAD))."
+            exit 0
+          fi
+          
+          if [ -f coverage.json ]; then
+            # Extract coverage percentage from coverage.json
+            COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
+            
+            # Determine color
+            COLOR="green"
+            if [ "$COV" -lt 80 ]; then COLOR="red"; fi
+            if [ "$COV" -ge 80 ] && [ "$COV" -lt 90 ]; then COLOR="yellow"; fi
+            
+            # Replace badge in README.md
+            sed -i -E "s/coverage-[a-zA-Z0-9%]+-[a-zA-Z]+/coverage-${COV}%25-${COLOR}/g" README.md
+            
+            # Commit changes on a dedicated branch and open a PR
+            git config --global user.name "github-actions"
+            git config --global user.email "github-actions@github.com"
+            git add README.md
+            
+            # If there are no changes staged, exit without creating a branch/PR
+            if git diff --cached --quiet; then
+              echo "No coverage changes to commit"
+              exit 0
+            fi
+            
+            BRANCH_NAME="coverage-badge-update-${GITHUB_RUN_ID}"
+            git checkout -b "$BRANCH_NAME"
+            git commit -m "docs: update coverage badge to ${COV}% [skip ci]"
+            git push origin "$BRANCH_NAME"
+            
+            # Create a pull request targeting main (if possible)
+            gh pr create \
+              --base main \
+              --head "$BRANCH_NAME" \
+              --title "docs: update coverage badge to ${COV}%" \
+              --body "Automated update of coverage badge to ${COV}%." || echo "Pull request creation skipped or failed"
+          fi
+
   release:
     needs: build
     runs-on: windows-latest
