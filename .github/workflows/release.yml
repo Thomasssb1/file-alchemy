@@ -12,6 +12,45 @@ jobs:
     permissions:
       contents: read
 
+  update-badge:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data
+
+      - name: Update Coverage Badge in README
+        run: |
+          if [ -f coverage.json ]; then
+            # Extract coverage percentage from coverage.json
+            COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
+            
+            # Determine color
+            COLOR="green"
+            if [ "$COV" -lt 80 ]; then COLOR="red"; fi
+            if [ "$COV" -ge 80 ] && [ "$COV" -lt 90 ]; then COLOR="yellow"; fi
+            
+            # Replace badge in README.md
+            sed -i -E "s/coverage-[a-zA-Z0-9%]+-[a-zA-Z]+/coverage-${COV}%25-${COLOR}/g" README.md
+            
+            # Commit and push
+            git config --global user.name "github-actions"
+            git config --global user.email "github-actions@github.com"
+            git add README.md
+            git commit -m "docs: update coverage badge to ${COV}% [skip ci]" || echo "No coverage changes to commit"
+            git push
+          fi
+
   release:
     needs: build
     runs-on: windows-latest
