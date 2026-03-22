@@ -107,6 +107,9 @@ Ensure thorough test coverage by systematically testing edge cases, boundary con
 - **Edge cases:** Empty strings, `None` values, malformed JSON structures, and unexpected unicode characters.
 - **Failure conditions:** API timeouts and strict type mismatches.
 
+### 4. Running Tests
+When running tests locally with `pytest`, ensure you use an active virtual environment (e.g., using `.venv`) so dependencies are correctly found.
+
 Use systematic approaches like `pytest.mark.parametrize` to ensure comprehensive coverage without duplicating test logic:
 
 ```python
