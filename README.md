@@ -1,10 +1,15 @@
 # File Alchemy
 
-Universal file converter with FFmpeg integration, niche 3D pipelines, and a modern Fluent UI.
+<img src="./assets/logo.ico" alt="Logo" height="20" style="vertical-align:middle"> Universal file converter with FFmpeg integration, niche 3D pipelines, and a modern Fluent UI.
+
+![File Alchemy](./assets/screenshots/main-init.png)
+
+## Prerequisites
+
+- Python ≥ 3.11
+- [FFmpeg](https://ffmpeg.org/download.html) on PATH (required for media conversions)
 
 ## 1. Setup & Installation
-
-To develop or run the project locally, create a virtual environment and install the package along with its development dependencies:
 
 ```bash
 # Create a virtual environment
@@ -16,8 +21,6 @@ python -m venv .venv
 
 ## 2. Running the Application
 
-During development, you can quickly run the application directly from the virtual environment:
-
 ```bash
 # Run the application
 .venv\Scripts\python.exe -m file_alchemy
@@ -26,15 +29,42 @@ During development, you can quickly run the application directly from the virtua
 .venv\Scripts\file-alchemy
 ```
 
-## 3. Building the Executable (Rebuild)
+## 3. Testing
 
-To bundle the application into a standalone `.exe` file that you can share on GitHub without requiring users to install Python, use PyInstaller.
+Tests run with coverage checks enabled by default (minimum 80% enforced):
+
+```bash
+# Run all tests (coverage runs automatically)
+.venv\Scripts\python.exe -m pytest
+
+# Run only the UI component tests
+.venv\Scripts\python.exe -m pytest tests/test_media_page.py -v
+
+# Generate an HTML coverage report
+.venv\Scripts\python.exe -m pytest --cov-report=html
+```
+
+Tests work headlessly in CI — `QT_QPA_PLATFORM=offscreen` is set automatically.
+
+## 4. Linting
+
+```bash
+# Check for issues
+ruff check .
+
+# Auto-format
+ruff format .
+```
+
+## 5. Building the Executable
+
+To bundle the application into a distribution folder containing the executable and its dependencies, use the provided PyInstaller spec file.
 
 Run this command from the root of the project:
 
 ```bash
-.venv\Scripts\pyinstaller --name "File Alchemy" --onefile --icon=assets/logo.ico --windowed src/file_alchemy/app.py
+.venv\Scripts\pyinstaller "file_alchemy.spec"
 ```
 
-- The final `.exe` will be generated inside the `dist/` folder.
-- You can safely delete the `build/` folder and `File Alchemy.spec` file that generate during the process.
+- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy/File Alchemy.exe`.
+- You can safely delete the `build/` folder that generates during the process.
