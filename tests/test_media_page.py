@@ -468,6 +468,7 @@ def test_on_progress_aggregates_total_batch(page: MediaPage) -> None:
 def test_progress_bar_hidden_after_successful_conversion(
     page: MediaPage, tmp_path: Path
 ) -> None:
+    _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._pending = 1
     with patch("file_alchemy.ui.pages.media_page.InfoBar"):
         page._on_finished(tmp_path / "out.mp3")
@@ -485,7 +486,8 @@ def test_infobar_success_shown_after_conversion(
     mock.success.assert_called_once()
 
 
-def test_progress_bar_hidden_after_error(page: MediaPage) -> None:
+def test_progress_bar_hidden_after_error(page: MediaPage, tmp_path: Path) -> None:
+    _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._pending = 1
     with patch("file_alchemy.ui.pages.media_page.InfoBar"):
         page._on_error("FFmpeg conversion failed with code 1")
@@ -502,8 +504,9 @@ def test_infobar_error_shown_on_failure(page: MediaPage) -> None:
 
 
 def test_reset_after_batch_restores_button_and_hides_bar(
-    page: MediaPage,
+    page: MediaPage, tmp_path: Path
 ) -> None:
+    _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._convert_btn.setEnabled(False)
     page._progress_bar.setVisible(True)
 
