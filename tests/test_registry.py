@@ -15,6 +15,20 @@ from file_alchemy.engines.registry import (
 
 
 # --------------------------------------------------------------------------- #
+# ConversionRoute
+# --------------------------------------------------------------------------- #
+
+
+def test_route_normalization(mock_engine_fn: MagicMock) -> None:
+    """ConversionRoute.__post_init__ removes dots and lowercases extensions."""
+    route = ConversionRoute(
+        input_ext=".mP4", output_ext="aVi", category="Video", engine_fn=mock_engine_fn
+    )
+    assert route.input_ext == "mp4"
+    assert route.output_ext == "avi"
+
+
+# --------------------------------------------------------------------------- #
 # _category_of
 # --------------------------------------------------------------------------- #
 
