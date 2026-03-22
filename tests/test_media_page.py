@@ -174,9 +174,9 @@ def test_video_file_shows_cross_format_section(page: MediaPage, tmp_path: Path) 
         for i in range(page._format_combo.count())
         if not model.item(i).isEnabled() and "cross" in model.item(i).text().lower()
     ]
-    assert (
-        cross_headers
-    ), "Expected at least one '(cross-format)' header for video input"
+    assert cross_headers, (
+        "Expected at least one '(cross-format)' header for video input"
+    )
 
 
 def test_all_header_items_are_disabled(page: MediaPage, tmp_path: Path) -> None:
@@ -187,9 +187,9 @@ def test_all_header_items_are_disabled(page: MediaPage, tmp_path: Path) -> None:
     for i in range(page._format_combo.count()):
         item = model.item(i)
         if not item.isEnabled():
-            assert (
-                "──" in item.text()
-            ), f"Disabled item at index {i} looks wrong: {item.text()!r}"
+            assert "──" in item.text(), (
+                f"Disabled item at index {i} looks wrong: {item.text()!r}"
+            )
 
 
 def test_initial_selection_is_enabled_item(page: MediaPage, tmp_path: Path) -> None:
@@ -197,9 +197,9 @@ def test_initial_selection_is_enabled_item(page: MediaPage, tmp_path: Path) -> N
 
     idx = page._format_combo.currentIndex()
     item = page._format_combo.model().item(idx)
-    assert (
-        item.isEnabled()
-    ), f"Initial selection landed on a disabled header at index {idx}: {item.text()!r}"
+    assert item.isEnabled(), (
+        f"Initial selection landed on a disabled header at index {idx}: {item.text()!r}"
+    )
 
 
 def test_convert_button_disabled_for_unknown_extension(
