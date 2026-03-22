@@ -30,7 +30,7 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
-from file_alchemy.engines.registry import DEFAULT_REGISTRY, _category_of
+from file_alchemy.engines.registry import DEFAULT_REGISTRY, ConversionRoute, _category_of
 from file_alchemy.ui.workers import ConversionWorker
 
 
@@ -111,7 +111,7 @@ class MediaPage(QWidget):
         super().__init__(parent)
         self.setObjectName("MediaPage")
         self._current_worker: ConversionWorker | None = None
-        self._queue: list[tuple[Path, Path, object]] = []
+        self._queue: list[tuple[Path, Path, ConversionRoute]] = []
         self._input_files: list[Path] = []
         self._output_dir: Path | None = None
         self._pending: int = 0
