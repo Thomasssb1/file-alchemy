@@ -1,5 +1,6 @@
 """Global pytest fixtures and configurations."""
 
+import os
 import shutil
 from unittest.mock import MagicMock, patch
 
@@ -7,6 +8,10 @@ import pytest
 
 from file_alchemy.engines import media_engine
 from file_alchemy.engines.registry import ConversionRegistry
+
+# Use Qt's offscreen platform when no display is available (CI / headless).
+# setdefault means this is a no-op when a real display is already configured.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 _HAS_FFMPEG = bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
 skip_no_ffmpeg = pytest.mark.skipif(
