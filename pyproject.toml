@@ -21,6 +21,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-qt>=4.0",
+    "pytest-cov>=5.0",
     "pyinstaller>=6.0",
     "ruff>=0.3.0",
 ]
@@ -33,3 +35,17 @@ packages = ["src/file_alchemy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--cov --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+source = ["src/file_alchemy"]
+omit = [
+    "*/__main__.py",
+    "*/app.py",
+    "*/ui/main_window.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 80

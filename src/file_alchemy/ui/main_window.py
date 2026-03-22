@@ -5,12 +5,14 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QVBoxLayout, QLabel, QWidget
 from qfluentwidgets import (
     FluentIcon,
     FluentWindow,
     NavigationItemPosition,
 )
+
+from file_alchemy.ui.pages.media_page import MediaPage
 
 
 class PlaceholderPage(QWidget):
@@ -61,8 +63,8 @@ class MainWindow(FluentWindow):
             )
 
     def _setup_navigation(self) -> None:
-        # --- Top-level pages (placeholders for now) ---
-        self._media_page = PlaceholderPage("Media Converter")
+        # --- Media Converter page ---
+        self._media_page = MediaPage()
         self.addSubInterface(
             self._media_page,
             FluentIcon.VIDEO,
