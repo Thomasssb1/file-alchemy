@@ -107,6 +107,9 @@ Ensure thorough test coverage by systematically testing edge cases, boundary con
 - **Edge cases:** Empty strings, `None` values, malformed JSON structures, and unexpected unicode characters.
 - **Failure conditions:** API timeouts and strict type mismatches.
 
+### 4. Running Tests
+When running tests locally with `pytest`, ensure you use an active virtual environment (e.g., using `.venv`) so dependencies are correctly found.
+
 Use systematic approaches like `pytest.mark.parametrize` to ensure comprehensive coverage without duplicating test logic:
 
 ```python
@@ -132,4 +135,17 @@ def test_parse_hex_string_success(input_val, expected):
 def test_parse_hex_string_failures(invalid_input):
     with pytest.raises((ValueError, TypeError)):
         parse_hex_string(invalid_input)
+```
+
+### 5. Code Formatting (Ruff)
+
+The project utilizes `ruff` for strict code formatting to ensure consistency across the codebase.
+When running the formatter locally, use the globally installed `ruff` command. Do not attempt to invoke Ruff as a module from within the project's virtual environment.
+
+```shell
+# Good
+ruff format .
+
+# Bad - attempting to call the module from the virtual environment, which may fail if not bundled locally
+.\.venv\Scripts\python.exe -m ruff format .
 ```

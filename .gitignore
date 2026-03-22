@@ -16,3 +16,6 @@ build/
 .idea/
 .vscode/
 *.swp
+
+task.md
+implementation_plan.md
