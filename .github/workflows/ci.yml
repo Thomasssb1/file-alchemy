@@ -9,9 +9,10 @@ on:
 
 jobs:
   build:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -44,12 +45,35 @@ jobs:
             echo "No tests directory found, skipping pytest."
           fi
 
-      - name: Update Coverage Badge in README
+      - name: Upload coverage data
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data
+          path: coverage.json
+          retention-days: 1
+
+  update-badge:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data
+
+      - name: Update Coverage Badge in README
         run: |
           if [ -f coverage.json ]; then
             # Extract coverage percentage from coverage.json
-            COV=$(python -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
+            COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
             
             # Determine color
             COLOR="green"
@@ -57,7 +81,7 @@ jobs:
             if [ "$COV" -ge 80 ] && [ "$COV" -lt 90 ]; then COLOR="yellow"; fi
             
             # Replace badge in README.md
-            sed -i -E "s/coverage-[0-9]+%25-(red|yellow|green)/coverage-${COV}%25-${COLOR}/g" README.md
+            sed -i -E "s/coverage-[a-zA-Z0-9%]+-[a-zA-Z]+/coverage-${COV}%25-${COLOR}/g" README.md
             
             # Commit and push
             git config --global user.name "github-actions"
