@@ -290,13 +290,13 @@ def test_start_conversion_skips_header_text(page: MediaPage, tmp_path: Path) -> 
 
     page._start_conversion()
     assert getattr(page, "_current_worker", None) is None
-    assert page._queue == []
+    assert not page._queue
 
 
 def test_start_conversion_skips_when_no_files(page: MediaPage) -> None:
     page._start_conversion()
     assert getattr(page, "_current_worker", None) is None
-    assert page._queue == []
+    assert not page._queue
 
 
 # --------------------------------------------------------------------------- #

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 
@@ -111,7 +112,7 @@ class MediaPage(QWidget):
         super().__init__(parent)
         self.setObjectName("MediaPage")
         self._current_worker: ConversionWorker | None = None
-        self._queue: list[tuple[Path, Path, ConversionRoute]] = []
+        self._queue: deque[tuple[Path, Path, ConversionRoute]] = deque()
         self._input_files: list[Path] = []
         self._output_dir: Path | None = None
         self._pending: int = 0
@@ -343,7 +344,7 @@ class MediaPage(QWidget):
         if not self._queue:
             return
 
-        input_path, output_path, route = self._queue.pop(0)
+        input_path, output_path, route = self._queue.popleft()
         self._current_worker = ConversionWorker(input_path, output_path, route)
         self._current_worker.progress.connect(self._on_progress)
         self._current_worker.finished.connect(self._on_finished)
