@@ -94,7 +94,10 @@ class _DropZone(QFrame):
         urls = event.mimeData().urls()
         paths = [Path(u.toLocalFile()) for u in urls if u.isLocalFile()]
         if paths:
+            event.acceptProposedAction()
             self._files_callback(paths)
+        else:
+            event.ignore()
 
 
 class MediaPage(QWidget):
@@ -398,4 +401,6 @@ class MediaPage(QWidget):
     def _reset_after_batch(self) -> None:
         self._progress_bar.setVisible(False)
         self._progress_bar.setValue(0)
-        self._convert_btn.setEnabled(True)
+        out_ext = self._format_combo.currentText()
+        has_valid_ext = bool(out_ext and not out_ext.startswith("──"))
+        self._convert_btn.setEnabled(bool(self._input_files) and has_valid_ext)

@@ -20,7 +20,7 @@ class ConversionWorker(QThread):
     """
 
     progress: pyqtSignal = pyqtSignal(float)
-    finished: pyqtSignal = pyqtSignal(Path)
+    finished: pyqtSignal = pyqtSignal(object)
     error: pyqtSignal = pyqtSignal(str)
 
     def __init__(
