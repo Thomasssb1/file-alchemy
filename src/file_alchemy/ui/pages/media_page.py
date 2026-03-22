@@ -110,10 +110,12 @@ class MediaPage(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MediaPage")
-        self._workers: list[ConversionWorker] = []
+        self._current_worker: ConversionWorker | None = None
+        self._queue: list[tuple[Path, Path, object]] = []
         self._input_files: list[Path] = []
         self._output_dir: Path | None = None
         self._pending: int = 0
+        self._batch_total: int = 0
         self._setup_ui()
 
     # ------------------------------------------------------------------ #
@@ -314,32 +316,45 @@ class MediaPage(QWidget):
         self._progress_bar.setValue(0)
         self._progress_bar.setVisible(True)
 
-        self._pending = len(self._input_files)
-        self._workers.clear()
+        self._queue.clear()
 
         for input_path in self._input_files:
             in_ext = input_path.suffix.lstrip(".").lower()
             route = DEFAULT_REGISTRY.get_route(in_ext, out_ext)
             if route is None:
-                self._pending -= 1
                 self._show_error(
                     f"No conversion route for {in_ext} → {out_ext}. Skipped."
                 )
                 continue
 
             output_path = self._resolve_output_path(input_path, out_ext)
-            worker = ConversionWorker(input_path, output_path, route)
-            worker.progress.connect(self._on_progress)
-            worker.finished.connect(self._on_finished)
-            worker.error.connect(self._on_error)
-            self._workers.append(worker)
-            worker.start()
+            self._queue.append((input_path, output_path, route))
 
+        self._batch_total = len(self._queue)
+        self._pending = self._batch_total
+        
         if self._pending == 0:
             self._reset_after_batch()
+        else:
+            self._run_next_in_queue()
+
+    def _run_next_in_queue(self) -> None:
+        """Pop the next conversion task and start the worker."""
+        if not self._queue:
+            return
+
+        input_path, output_path, route = self._queue.pop(0)
+        self._current_worker = ConversionWorker(input_path, output_path, route)
+        self._current_worker.progress.connect(self._on_progress)
+        self._current_worker.finished.connect(self._on_finished)
+        self._current_worker.error.connect(self._on_error)
+        self._current_worker.start()
 
     def _on_progress(self, pct: float) -> None:
-        self._progress_bar.setValue(int(pct))
+        if self._batch_total > 0:
+            completed = self._batch_total - self._pending
+            overall_pct = ((completed * 100) + pct) / self._batch_total
+            self._progress_bar.setValue(int(overall_pct))
 
     def _on_finished(self, output_path: Path) -> None:
         InfoBar.success(
@@ -358,10 +373,16 @@ class MediaPage(QWidget):
         self._complete_one()
 
     def _complete_one(self) -> None:
-        """Decrement the pending counter and reset UI when the batch is done."""
+        """Decrement the pending counter and run next or reset UI."""
+        if self._current_worker:
+            self._current_worker.deleteLater()
+            self._current_worker = None
+
         self._pending -= 1
         if self._pending <= 0:
             self._reset_after_batch()
+        else:
+            self._run_next_in_queue()
 
     def _show_error(self, message: str) -> None:
         InfoBar.error(
