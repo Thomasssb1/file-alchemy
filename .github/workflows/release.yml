@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,7 +32,14 @@ jobs:
           name: coverage-data
 
       - name: Update Coverage Badge in README
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [ "$(git rev-parse HEAD)" != "${{ github.sha }}" ]; then
+            echo "Skipping update: Tag commit (${{ github.sha }}) does not match the tip of main ($(git rev-parse HEAD))."
+            exit 0
+          fi
+          
           if [ -f coverage.json ]; then
             # Extract coverage percentage from coverage.json
             COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
