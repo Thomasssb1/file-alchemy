@@ -63,7 +63,7 @@ To bundle the application into a distribution folder containing the executable a
 Run this command from the root of the project:
 
 ```bash
-.venv\Scripts\pyinstaller "File Alchemy.spec"
+.venv\Scripts\pyinstaller "file_alchemy.spec"
 ```
 
 - The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy/File Alchemy.exe`.
