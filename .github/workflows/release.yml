@@ -43,12 +43,28 @@ jobs:
             # Replace badge in README.md
             sed -i -E "s/coverage-[a-zA-Z0-9%]+-[a-zA-Z]+/coverage-${COV}%25-${COLOR}/g" README.md
             
-            # Commit and push
+            # Commit changes on a dedicated branch and open a PR
             git config --global user.name "github-actions"
             git config --global user.email "github-actions@github.com"
             git add README.md
-            git commit -m "docs: update coverage badge to ${COV}% [skip ci]" || echo "No coverage changes to commit"
-            git push
+            
+            # If there are no changes staged, exit without creating a branch/PR
+            if git diff --cached --quiet; then
+              echo "No coverage changes to commit"
+              exit 0
+            fi
+            
+            BRANCH_NAME="coverage-badge-update-${GITHUB_RUN_ID}"
+            git checkout -b "$BRANCH_NAME"
+            git commit -m "docs: update coverage badge to ${COV}% [skip ci]"
+            git push origin "$BRANCH_NAME"
+            
+            # Create a pull request targeting main (if possible)
+            gh pr create \
+              --base main \
+              --head "$BRANCH_NAME" \
+              --title "docs: update coverage badge to ${COV}%" \
+              --body "Automated update of coverage badge to ${COV}%." || echo "Pull request creation skipped or failed"
           fi
 
   release:

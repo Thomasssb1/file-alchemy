@@ -42,7 +42,7 @@ jobs:
       - name: Run tests and collect coverage
         run: |
           if [ -d tests ]; then
-            pytest --cov=src/file_alchemy --cov-report=json --cov-report=term
+            pytest --cov-report=json
           else
             echo "No tests directory found, skipping pytest."
           fi
