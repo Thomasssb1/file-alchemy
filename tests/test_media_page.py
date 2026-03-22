@@ -39,7 +39,7 @@ def _make_drop_event(urls: list[QUrl]) -> QDropEvent:
     """Build a synthetic QDropEvent carrying the given URLs.
 
     The QMimeData is stored as ``event._mime`` so Python's refcount keeps it
-    alive for the entire duration of the ``dropEvent`` call — without this,
+    alive for the entire duration of the ``dropEvent`` call - without this,
     the GC can collect it mid-call and cause an access violation on Windows.
     """
     mime = QMimeData()
@@ -235,7 +235,7 @@ def test_selecting_each_row_updates_format_combo(
 
 
 # --------------------------------------------------------------------------- #
-# Format selection — same category vs cross-category
+# Format selection - same category vs cross-category
 # --------------------------------------------------------------------------- #
 
 

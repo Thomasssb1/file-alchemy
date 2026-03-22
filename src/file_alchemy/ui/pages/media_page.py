@@ -1,4 +1,4 @@
-"""Media Converter page — drag-drop, format picker, batch conversion."""
+"""Media Converter page - drag-drop, format picker, batch conversion."""
 
 from __future__ import annotations
 
@@ -244,7 +244,7 @@ class MediaPage(QWidget):
         self._repopulate_format_combo(self._input_files[row])
 
     # ------------------------------------------------------------------ #
-    # Format ComboBox — grouped by category
+    # Format ComboBox - grouped by category
     # ------------------------------------------------------------------ #
 
     def _add_combo_header(self, text: str) -> None:

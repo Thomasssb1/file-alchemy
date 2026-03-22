@@ -5,7 +5,7 @@ a = Analysis(
     ['src\\file_alchemy\\app.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('assets', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
