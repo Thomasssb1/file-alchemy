@@ -1,6 +1,8 @@
 # File Alchemy
 
-Universal file converter with FFmpeg integration, niche 3D pipelines, and a modern Fluent UI.
+[![CI](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/badge/coverage-80%25-yellow)](#) [![Version](https://img.shields.io/github/v/release/Thomasssb1/file-alchemy?display_name=tag)](https://github.com/Thomasssb1/file-alchemy/releases) [![License](https://img.shields.io/github/license/Thomasssb1/file-alchemy)](https://github.com/Thomasssb1/file-alchemy/blob/main/LICENSE)
+
+Universal file converter with FFmpeg integration and a modern Windows-inspired UI.
 
 ## 1. Setup & Installation
 
