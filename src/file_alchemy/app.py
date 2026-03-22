@@ -1,4 +1,4 @@
-"""Application entry point — creates QApplication, sets theme, launches MainWindow."""
+"""Application entry point - creates QApplication, sets theme, launches MainWindow."""
 
 import os
 import sys
