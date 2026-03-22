@@ -25,6 +25,7 @@ jobs:
           fetch-depth: 1
 
       - name: Download coverage data
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: coverage-data
