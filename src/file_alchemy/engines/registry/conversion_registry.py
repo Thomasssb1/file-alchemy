@@ -25,11 +25,7 @@ class ConversionRegistry:
     def outputs_for(self, input_ext: str) -> list[str]:
         """Return all output extensions reachable from *input_ext*."""
         key_ext = input_ext.lower().lstrip(".")
-        return [
-            out_ext
-            for (in_ext, out_ext) in self._routes
-            if in_ext == key_ext
-        ]
+        return [out_ext for (in_ext, out_ext) in self._routes if in_ext == key_ext]
 
     def is_supported(self, input_ext: str, output_ext: str) -> bool:
         """Return ``True`` if the conversion is registered."""

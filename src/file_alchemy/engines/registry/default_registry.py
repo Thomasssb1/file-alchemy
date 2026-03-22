@@ -28,9 +28,9 @@ CATEGORY_EXTS: dict[str, frozenset[str]] = {
 
 # Cross-format conversions supported by FFmpeg (e.g. video → gif, video → mp3).
 _CROSS_CONVERSIONS: dict[str, set[str]] = {
-    "Video": {"gif", "mp3", "aac", "wav"},   # strip audio or make gif
-    "Audio": set(),                            # audio → video not supported here
-    "Image": set(),                            # image → video out of scope
+    "Video": {"gif", "mp3", "aac", "wav"},  # strip audio or make gif
+    "Audio": set(),  # audio → video not supported here
+    "Image": set(),  # image → video out of scope
 }
 
 
@@ -45,6 +45,7 @@ def _category_of(ext: str) -> str | None:
 # --------------------------------------------------------------------------- #
 # Default registry construction
 # --------------------------------------------------------------------------- #
+
 
 def _build_default_registry() -> ConversionRegistry:
     """Build and return the application-wide default registry."""

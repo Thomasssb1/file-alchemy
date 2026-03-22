@@ -81,7 +81,10 @@ def test_get_route_normalises_dots_and_case(
 ) -> None:
     empty_registry.register(
         ConversionRoute(
-            input_ext="mp4", output_ext="avi", category="Video", engine_fn=mock_engine_fn
+            input_ext="mp4",
+            output_ext="avi",
+            category="Video",
+            engine_fn=mock_engine_fn,
         )
     )
     assert empty_registry.get_route(".MP4", ".AVI") is not None
@@ -117,7 +120,9 @@ def test_outputs_for_returns_all_registered_targets(
     assert set(outputs) == {"jpg", "webp"}
 
 
-def test_outputs_for_unknown_ext_returns_empty(empty_registry: ConversionRegistry) -> None:
+def test_outputs_for_unknown_ext_returns_empty(
+    empty_registry: ConversionRegistry,
+) -> None:
     assert empty_registry.outputs_for("xyz") == []
 
 

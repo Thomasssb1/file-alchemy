@@ -131,7 +131,9 @@ def test_parse_progress_zero_duration_no_division() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_convert_returns_resolved_output_path(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_returns_resolved_output_path(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
     """convert() returns the resolved output path on success."""
     inp = tmp_path / "input.wav"
     inp.touch()
@@ -152,7 +154,9 @@ def test_convert_returns_resolved_output_path(tmp_path: Path, mock_ffmpeg_paths:
     assert result == out.resolve()
 
 
-def test_convert_raises_on_nonzero_returncode(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_raises_on_nonzero_returncode(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
     """convert() raises CalledProcessError when FFmpeg exits non-zero."""
     inp = tmp_path / "bad.mp4"
     inp.touch()
@@ -191,7 +195,9 @@ def test_convert_extra_args_forwarded(tmp_path: Path, mock_ffmpeg_paths: None) -
     assert "scale=1280:-1" in cmd
 
 
-def test_convert_without_progress_callback(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_without_progress_callback(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
     """convert() works correctly when no progress callback is given."""
     inp = tmp_path / "in.ogg"
     inp.touch()
@@ -207,7 +213,9 @@ def test_convert_without_progress_callback(tmp_path: Path, mock_ffmpeg_paths: No
             mock_probe.assert_not_called()
 
 
-def test_convert_indeterminate_progress(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_indeterminate_progress(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
     """convert() gracefully falls back to duration=0 if probe() raises an exception."""
     inp = tmp_path / "in.mp4"
     inp.touch()

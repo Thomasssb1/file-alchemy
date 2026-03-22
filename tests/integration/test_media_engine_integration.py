@@ -24,8 +24,10 @@ def test_convert_wav_to_mp3(tmp_path: Path, sample_wav: Path) -> None:
     """convert() produces an mp3 file from a source WAV."""
     mp3 = tmp_path / "silent.mp3"
     progress_values: list[float] = []
-    
-    result = media_engine.convert(sample_wav, mp3, progress_callback=progress_values.append)
+
+    result = media_engine.convert(
+        sample_wav, mp3, progress_callback=progress_values.append
+    )
 
     assert result.exists()
     assert result.suffix == ".mp3"
@@ -38,8 +40,10 @@ def test_convert_png_to_jpeg(tmp_path: Path, sample_png: Path) -> None:
     """convert() produces a jpeg image from a source PNG."""
     jpeg = tmp_path / "dummy.jpg"
     progress_values: list[float] = []
-    
-    result = media_engine.convert(sample_png, jpeg, progress_callback=progress_values.append)
+
+    result = media_engine.convert(
+        sample_png, jpeg, progress_callback=progress_values.append
+    )
 
     assert result.exists()
     assert result.suffix == ".jpg"

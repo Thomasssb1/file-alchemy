@@ -41,23 +41,25 @@ def probe(path: str | Path) -> dict:
     _, ffprobe_bin = _require_ffmpeg()
     try:
         result = subprocess.run(
-        [
-            ffprobe_bin,
-            "-v", "quiet",
-            "-print_format", "json",
-            "-show_format",
-            "-show_streams",
-            str(path),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+            [
+                ffprobe_bin,
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
+                "-show_format",
+                "-show_streams",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
     except subprocess.CalledProcessError as e:
         raise MediaConversionError(
             f"Failed to probe file: {path}", stderr=e.stderr
         ) from e
-    
+
     return json.loads(result.stdout)
 
 
@@ -89,6 +91,7 @@ def _parse_progress(
 # --------------------------------------------------------------------------- #
 # Conversion
 # --------------------------------------------------------------------------- #
+
 
 def convert(
     input_path: str | Path,
@@ -131,9 +134,10 @@ def convert(
 
     cmd = [
         ffmpeg_bin,
-        "-i", str(input_path),
+        "-i",
+        str(input_path),
         *(extra_args or []),
-        "-y",          # overwrite output without prompting
+        "-y",  # overwrite output without prompting
         str(output_path),
     ]
 
