@@ -1,6 +1,8 @@
 # File Alchemy
 
-Universal file converter with FFmpeg integration, niche 3D pipelines, and a modern Fluent UI.
+<img src="./assets/logo.ico" alt="Logo" height="20" style="vertical-align:middle"> Universal file converter with FFmpeg integration, niche 3D pipelines, and a modern Fluent UI.
+
+![File Alchemy](./assets/screenshots/main-init.png)
 
 ## Prerequisites
 
@@ -62,4 +64,3 @@ ruff format .
 
 - The final `.exe` will be generated inside the `dist/` folder.
 - You can safely delete the `build/` folder and `File Alchemy.spec` file that generate during the process.
-
