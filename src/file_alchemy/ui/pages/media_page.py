@@ -31,7 +31,11 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
-from file_alchemy.engines.registry import DEFAULT_REGISTRY, ConversionRoute, _category_of
+from file_alchemy.engines.registry import (
+    DEFAULT_REGISTRY,
+    ConversionRoute,
+    _category_of,
+)
 from file_alchemy.ui.workers import ConversionWorker
 
 
