@@ -111,3 +111,43 @@ def test_probe_raises_on_failure(tmp_path: Path) -> None:
             media_engine.MediaConversionError, match="Failed to probe file:"
         ):
             media_engine.probe(fake_file)
+
+
+# --------------------------------------------------------------------------- #
+# _parse_progress
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "line, duration, expected_pct",
+    [
+        ("frame=  100 fps= 25 time=00:00:05.00 bitrate=  128", 10.0, 50.0),
+        ("frame=  200 fps= 25 time=00:00:10.00 bitrate=  128", 10.0, 100.0),
+        ("frame=    0 fps=  0 time=00:00:00.00 bitrate= N/A", 10.0, 0.0),
+        # time= beyond duration → clamped to 100
+        ("frame=  999 fps= 25 time=00:00:20.00 bitrate=  128", 10.0, 100.0),
+    ],
+)
+def test_parse_progress_calls_callback(
+    line: str, duration: float, expected_pct: float
+) -> None:
+    captured: list[float] = []
+    media_engine._parse_progress(line, duration, captured.append)
+    assert len(captured) == 1
+    assert captured[0] == pytest.approx(expected_pct, abs=0.01)
+
+
+def test_parse_progress_no_time_token() -> None:
+    """Lines without time= should not invoke the callback."""
+    captured: list[float] = []
+    media_engine._parse_progress(
+        "Duration: 00:00:10.00, start: 0.0", 10.0, captured.append
+    )
+    assert captured == []
+
+
+def test_parse_progress_zero_duration_no_division() -> None:
+    """Zero duration must not cause a ZeroDivisionError."""
+    captured: list[float] = []
+    media_engine._parse_progress("time=00:00:05.00 bitrate=  128", 0.0, captured.append)
+    assert captured == []
