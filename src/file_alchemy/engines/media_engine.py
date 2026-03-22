@@ -65,7 +65,6 @@ def probe(path: str | Path) -> dict:
     except json.JSONDecodeError as e:
         raise MediaConversionError(
             f"Failed to parse ffprobe JSON output for file: {path}",
-            stdout=result.stdout,
             stderr=result.stderr,
         ) from e
 
@@ -74,7 +73,6 @@ def probe(path: str | Path) -> dict:
 # Progress parsing
 # --------------------------------------------------------------------------- #
 
-_DURATION_RE = re.compile(r"Duration:\s*(\d+):(\d+):([\d.]+)")
 _TIME_RE = re.compile(r"time=(\d+):(\d+):([\d.]+)")
 
 
