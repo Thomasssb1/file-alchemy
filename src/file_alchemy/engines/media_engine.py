@@ -60,7 +60,14 @@ def probe(path: str | Path) -> dict:
             f"Failed to probe file: {path}", stderr=e.stderr
         ) from e
 
-    return json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        raise MediaConversionError(
+            f"Failed to parse ffprobe JSON output for file: {path}",
+            stdout=result.stdout,
+            stderr=result.stderr,
+        ) from e
 
 
 # --------------------------------------------------------------------------- #

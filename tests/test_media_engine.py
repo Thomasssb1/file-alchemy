@@ -122,7 +122,11 @@ def test_parse_progress_no_time_token() -> None:
 def test_parse_progress_zero_duration_no_division() -> None:
     """Zero duration must not cause a ZeroDivisionError."""
     captured: list[float] = []
-    media_engine._parse_progress("time=00:00:05.00 bitrate=  128", 0.0, captured.append)
+    media_engine._parse_progress(
+        "time=00:00:05.00 bitrate=  128",
+        0.0,
+        captured.append,
+    )
     assert captured == []
 
 
