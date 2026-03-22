@@ -6,7 +6,6 @@ from pathlib import Path
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from file_alchemy.engines import media_engine
 from file_alchemy.engines.registry import ConversionRoute
 from file_alchemy.errors.media_conversion_error import MediaConversionError
 
@@ -40,7 +39,7 @@ class ConversionWorker(QThread):
     def run(self) -> None:
         """Execute the conversion. Called automatically by QThread.start()."""
         try:
-            result = media_engine.convert(
+            result = self._route.engine_fn(
                 self._input_path,
                 self._output_path,
                 extra_args=self._extra_args,
