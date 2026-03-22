@@ -63,3 +63,51 @@ def test_require_ffmpeg_returns_paths_when_present() -> None:
         ffmpeg, ffprobe = media_engine._require_ffmpeg()
     assert ffmpeg == "/usr/bin/ffmpeg"
     assert ffprobe == "/usr/bin/ffprobe"
+
+
+# --------------------------------------------------------------------------- #
+# probe (mocked)
+# --------------------------------------------------------------------------- #
+
+
+def test_probe_returns_parsed_dict(tmp_path: Path) -> None:
+    """probe() parses ffprobe JSON output and returns a dict."""
+    fake_file = tmp_path / "input.mp4"
+    fake_file.touch()
+
+    completed = MagicMock()
+    completed.stdout = _FAKE_PROBE_OUTPUT
+
+    with (
+        patch.object(
+            media_engine, "_require_ffmpeg", return_value=("/ffmpeg", "/ffprobe")
+        ),
+        patch("subprocess.run", return_value=completed) as mock_run,
+    ):
+        result = media_engine.probe(fake_file)
+
+    assert result["format"]["duration"] == "10.0"
+    assert result["streams"][0]["codec_name"] == "h264"
+    # Ensure -print_format json and -show_streams were passed
+    call_args = mock_run.call_args[0][0]
+    assert "-print_format" in call_args
+    assert "json" in call_args
+    assert "-show_streams" in call_args
+
+
+def test_probe_raises_on_failure(tmp_path: Path) -> None:
+    """probe() raises MediaConversionError when ffprobe exits with non-zero status."""
+    fake_file = tmp_path / "non_existent.mp4"
+
+    error = subprocess.CalledProcessError(1, ["ffprobe"], stderr="No such file")
+
+    with (
+        patch.object(
+            media_engine, "_require_ffmpeg", return_value=("/ffmpeg", "/ffprobe")
+        ),
+        patch("subprocess.run", side_effect=error),
+    ):
+        with pytest.raises(
+            media_engine.MediaConversionError, match="Failed to probe file:"
+        ):
+            media_engine.probe(fake_file)
