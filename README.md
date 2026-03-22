@@ -46,7 +46,7 @@ Tests run with coverage checks enabled by default (minimum 80% enforced):
 .venv\Scripts\python.exe -m pytest --cov-report=html
 ```
 
-Tests work headlessly in CI — `QT_QPA_PLATFORM=offscreen` is set automatically.
+Tests work headlessly in CI - `QT_QPA_PLATFORM=offscreen` is set automatically.
 
 ## 4. Linting
 
