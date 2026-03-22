@@ -332,7 +332,7 @@ class MediaPage(QWidget):
 
         self._batch_total = len(self._queue)
         self._pending = self._batch_total
-        
+
         if self._pending == 0:
             self._reset_after_batch()
         else:
