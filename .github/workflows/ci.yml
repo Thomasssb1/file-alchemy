@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -36,10 +36,33 @@ jobs:
       - name: Analyze project source
         run: ruff check .
 
-      - name: Run tests
+      - name: Run tests and collect coverage
         run: |
           if [ -d tests ]; then
-            pytest
+            pytest --cov=src/file_alchemy --cov-report=json --cov-report=term
           else
             echo "No tests directory found, skipping pytest."
+          fi
+
+      - name: Update Coverage Badge in README
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if [ -f coverage.json ]; then
+            # Extract coverage percentage from coverage.json
+            COV=$(python -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
+            
+            # Determine color
+            COLOR="green"
+            if [ "$COV" -lt 80 ]; then COLOR="red"; fi
+            if [ "$COV" -ge 80 ] && [ "$COV" -lt 90 ]; then COLOR="yellow"; fi
+            
+            # Replace badge in README.md
+            sed -i -E "s/coverage-[0-9]+%25-(red|yellow|green)/coverage-${COV}%25-${COLOR}/g" README.md
+            
+            # Commit and push
+            git config --global user.name "github-actions"
+            git config --global user.email "github-actions@github.com"
+            git add README.md
+            git commit -m "docs: update coverage badge to ${COV}% [skip ci]" || echo "No coverage changes to commit"
+            git push
           fi
