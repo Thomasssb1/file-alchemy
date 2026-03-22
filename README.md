@@ -58,9 +58,13 @@ ruff format .
 
 ## 5. Building the Executable
 
+To bundle the application into a distribution folder containing the executable and its dependencies, use the provided PyInstaller spec file.
+
+Run this command from the root of the project:
+
 ```bash
-.venv\Scripts\pyinstaller --name "File Alchemy" --onefile --icon=assets/logo.ico --windowed src/file_alchemy/app.py
+.venv\Scripts\pyinstaller "File Alchemy.spec"
 ```
 
-- The final `.exe` will be generated inside the `dist/` folder.
-- You can safely delete the `build/` folder and `File Alchemy.spec` file that generate during the process.
+- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy/File Alchemy.exe`.
+- You can safely delete the `build/` folder that generates during the process.
