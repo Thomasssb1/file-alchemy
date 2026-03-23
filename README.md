@@ -1,6 +1,6 @@
 # <img src="./assets/logo.ico" alt="Logo" height="40" style="vertical-align:middle"> File Alchemy
 
-[![CI](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/badge/coverage-unknown-lightgrey)](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml) [![Version](https://img.shields.io/github/v/release/Thomasssb1/file-alchemy?display_name=tag)](https://github.com/Thomasssb1/file-alchemy/releases) [![License](https://img.shields.io/github/license/Thomasssb1/file-alchemy)](https://github.com/Thomasssb1/file-alchemy/blob/main/LICENSE)
+[![CI](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/badge/coverage-94.01%25-green)](https://github.com/Thomasssb1/file-alchemy/actions/workflows/ci.yml) [![Version](https://img.shields.io/github/v/release/Thomasssb1/file-alchemy?display_name=tag)](https://github.com/Thomasssb1/file-alchemy/releases) [![License](https://img.shields.io/github/license/Thomasssb1/file-alchemy)](https://github.com/Thomasssb1/file-alchemy/blob/main/LICENSE)
 
 Universal file converter with FFmpeg integration and a modern Windows-inspired UI.
 
