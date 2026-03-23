@@ -118,13 +118,13 @@ jobs:
       - name: Build Windows Executable
         if: steps.get_version.outputs.version != '0.0.0'
         run: |
-          pyinstaller --name "File Alchemy" --onefile --icon=assets/logo.ico --windowed src/file_alchemy/app.py
+          pyinstaller file_alchemy.spec
 
-      - name: Rename executable for release
+      - name: Zip distribution folder
         if: steps.get_version.outputs.version != '0.0.0'
-        shell: bash
+        shell: pwsh
         run: |
-          mv "dist/File Alchemy.exe" "dist/File-Alchemy-v${{ steps.get_version.outputs.version }}-Windows.exe"
+          Compress-Archive -Path 'dist/File Alchemy/*' -DestinationPath "dist/File-Alchemy-v${{ steps.get_version.outputs.version }}-Windows.zip"
 
       - name: Ensure CHANGELOG entry exists & extract notes
         id: changelog
@@ -142,4 +142,4 @@ jobs:
           name: Release v${{ steps.get_version.outputs.version }}
           body: ${{ steps.changelog.outputs.changes }}
           files: |
-            dist/File-Alchemy-*-Windows.exe
+            dist/File-Alchemy-*-Windows.zip

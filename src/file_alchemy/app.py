@@ -1,4 +1,4 @@
-"""Application entry point — creates QApplication, sets theme, launches MainWindow."""
+"""Application entry point - creates QApplication, sets theme, launches MainWindow."""
 
 import os
 import sys
@@ -28,3 +28,7 @@ def main() -> None:
     window.show()
 
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

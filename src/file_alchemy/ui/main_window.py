@@ -1,4 +1,4 @@
-"""Main application window — FluentWindow with sidebar navigation."""
+"""Main application window - FluentWindow with sidebar navigation."""
 
 import sys
 from pathlib import Path
