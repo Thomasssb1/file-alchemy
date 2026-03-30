@@ -2,9 +2,11 @@
 
 import os
 import shutil
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PIL import Image
 
 from file_alchemy.engines import media_engine
 from file_alchemy.engines.registry import ConversionRegistry
@@ -39,3 +41,12 @@ def empty_registry() -> ConversionRegistry:
 def mock_engine_fn() -> MagicMock:
     """Return a generic mocked engine function."""
     return MagicMock()
+
+
+@pytest.fixture
+def dummy_image(tmp_path: Path) -> Path:
+    """Create a 100x100 RGB JPEG image."""
+    img_path = tmp_path / "test.jpg"
+    img = Image.new("RGB", (100, 100), color="red")
+    img.save(img_path, format="JPEG")
+    return img_path
