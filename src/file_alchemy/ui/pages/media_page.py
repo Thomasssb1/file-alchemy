@@ -12,9 +12,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -34,7 +31,7 @@ from file_alchemy.engines.registry import (
     ConversionRoute,
     _category_of,
 )
-from file_alchemy.ui.components.drop_zone import DropZone
+from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
 from file_alchemy.ui.workers import ConversionWorker
 
 
@@ -53,7 +50,6 @@ class MediaPage(QWidget):
         self.setObjectName("MediaPage")
         self._current_worker: ConversionWorker | None = None
         self._queue: deque[tuple[Path, Path, ConversionRoute]] = deque()
-        self._input_files: list[Path] = []
         self._output_dir: Path | None = None
         self._pending: int = 0
         self._batch_total: int = 0
@@ -86,25 +82,22 @@ class MediaPage(QWidget):
         self._progress_bar.setVisible(False)
         root.addWidget(self._progress_bar)
 
+        self._results_panel = ResultsPanel()
+        root.addWidget(self._results_panel)
+
         root.addStretch()
 
     def _build_file_list_column(self, parent_layout: QHBoxLayout) -> None:
-        col = QVBoxLayout()
-        col.setSpacing(6)
-        col.addWidget(StrongBodyLabel("Selected files"))
+        self._file_panel = FileListPanel()
+        self._file_panel.selectionChanged.connect(self._on_selection_changed)
+        self._file_panel.listCleared.connect(self._on_list_cleared)
+        parent_layout.addWidget(self._file_panel, stretch=3)
 
-        self._file_list = QListWidget()
-        self._file_list.setMinimumHeight(150)
-        self._file_list.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        self._file_list.currentRowChanged.connect(self._on_selection_changed)
-        col.addWidget(self._file_list)
-
-        clear_btn = PushButton(FluentIcon.DELETE, "Clear list")
-        clear_btn.clicked.connect(self._clear_files)
-        col.addWidget(clear_btn)
-        parent_layout.addLayout(col, stretch=3)
+    def _on_list_cleared(self) -> None:
+        if hasattr(self, "_format_combo"):
+            self._format_combo.clear()
+        if hasattr(self, "_convert_btn"):
+            self._convert_btn.setEnabled(False)
 
     def _build_controls_column(self, parent_layout: QHBoxLayout) -> None:
         col = QVBoxLayout()
@@ -157,24 +150,16 @@ class MediaPage(QWidget):
     # ------------------------------------------------------------------ #
 
     def _on_files_added(self, paths: list[Path]) -> None:
-        for path in paths:
-            if path not in self._input_files:
-                self._input_files.append(path)
-                self._file_list.addItem(QListWidgetItem(path.name))
-
-        if self._input_files and self._file_list.currentRow() < 0:
-            self._file_list.setCurrentRow(0)
-
-    def _clear_files(self) -> None:
-        self._input_files.clear()
-        self._file_list.clear()
-        self._format_combo.clear()
-        self._convert_btn.setEnabled(False)
+        self._file_panel.add_files(paths)
+        if self._file_panel.count == 1:
+            # Force a re-evaluation on the first file since currentRowChanged might not fire inherently if pre-selected
+            self._repopulate_format_combo(self._file_panel.files[0])
 
     def _on_selection_changed(self, row: int) -> None:
-        if row < 0 or row >= len(self._input_files):
+        files = self._file_panel.files
+        if row < 0 or row >= len(files):
             return
-        self._repopulate_format_combo(self._input_files[row])
+        self._repopulate_format_combo(files[row])
 
     # ------------------------------------------------------------------ #
     # Format ComboBox - grouped by category
@@ -250,7 +235,8 @@ class MediaPage(QWidget):
 
     def _start_conversion(self) -> None:
         out_ext = self._format_combo.currentText()
-        if not out_ext or out_ext.startswith("──") or not self._input_files:
+        files = self._file_panel.files
+        if not out_ext or out_ext.startswith("──") or not files:
             return
 
         self._convert_btn.setEnabled(False)
@@ -259,7 +245,7 @@ class MediaPage(QWidget):
 
         self._queue.clear()
 
-        for input_path in self._input_files:
+        for input_path in files:
             in_ext = input_path.suffix.lstrip(".").lower()
             route = DEFAULT_REGISTRY.get_route(in_ext, out_ext)
             if route is None:
@@ -298,6 +284,10 @@ class MediaPage(QWidget):
             self._progress_bar.setValue(int(overall_pct))
 
     def _on_finished(self, output_path: Path) -> None:
+        self._results_panel.add_success(
+            output_path.name, folder_path=output_path.parent
+        )
+
         InfoBar.success(
             title="Done",
             content=f"Saved: {output_path.name}",
@@ -310,6 +300,7 @@ class MediaPage(QWidget):
         self._complete_one()
 
     def _on_error(self, message: str) -> None:
+        self._results_panel.add_error(message)
         self._show_error(message)
         self._complete_one()
 
@@ -341,4 +332,4 @@ class MediaPage(QWidget):
         self._progress_bar.setValue(0)
         out_ext = self._format_combo.currentText()
         has_valid_ext = bool(out_ext and not out_ext.startswith("──"))
-        self._convert_btn.setEnabled(bool(self._input_files) and has_valid_ext)
+        self._convert_btn.setEnabled(self._file_panel.count > 0 and has_valid_ext)

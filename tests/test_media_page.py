@@ -88,7 +88,7 @@ def test_format_combo_empty_initially(page: MediaPage) -> None:
 
 
 def test_file_list_empty_initially(page: MediaPage) -> None:
-    assert page._file_list.count() == 0
+    assert page._file_panel._list_widget.count() == 0
 
 
 def test_pending_initialised_to_zero(page: MediaPage) -> None:
@@ -102,41 +102,41 @@ def test_pending_initialised_to_zero(page: MediaPage) -> None:
 
 def test_adding_file_populates_file_list(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
-    assert page._file_list.count() == 1
-    assert page._file_list.item(0).text() == "clip.mp4"
+    assert page._file_panel._list_widget.count() == 1
+    assert page._file_panel._list_widget.item(0).text() == "clip.mp4"
     assert page._convert_btn.isEnabled()
 
 
 def test_adding_duplicate_files_is_ignored(page: MediaPage, tmp_path: Path) -> None:
     paths = _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._on_files_added(paths)
-    assert page._file_list.count() == 1
+    assert page._file_panel._list_widget.count() == 1
 
 
 def test_clear_resets_page(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
-    page._clear_files()
-    assert page._file_list.count() == 0
+    page._file_panel.clear()
+    assert page._file_panel._list_widget.count() == 0
     assert page._format_combo.count() == 0
     assert not page._convert_btn.isEnabled()
 
 
 def test_multiple_files_all_appear_in_list(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip1.mp4", "clip2.mkv", "track.mp3", tmp_path=tmp_path)
-    assert len(page._input_files) == 3
-    assert page._file_list.count() == 3
+    assert len(page._file_panel.files) == 3
+    assert page._file_panel._list_widget.count() == 3
 
 
 def test_adding_files_keeps_existing_selection(page: MediaPage, tmp_path: Path) -> None:
     """Adding a second batch must not reset the row selection to 0."""
     _add_files(page, "clip.mp4", "track.mp3", tmp_path=tmp_path)
-    page._file_list.setCurrentRow(1)
+    page._file_panel._list_widget.setCurrentRow(1)
 
     extra = tmp_path / "extra.wav"
     extra.touch()
     page._on_files_added([extra])
 
-    assert page._file_list.currentRow() == 1
+    assert page._file_panel._list_widget.currentRow() == 1
 
 
 # --------------------------------------------------------------------------- #
@@ -214,14 +214,14 @@ def test_selecting_each_row_updates_format_combo(
     """Switching row between a video and audio file must repopulate the combo."""
     _add_files(page, "clip.mp4", "track.mp3", tmp_path=tmp_path)
 
-    page._file_list.setCurrentRow(0)
+    page._file_panel._list_widget.setCurrentRow(0)
     mp4_headers = [
         page._format_combo.model().item(i).text()
         for i in range(page._format_combo.count())
         if not page._format_combo.model().item(i).isEnabled()
     ]
 
-    page._file_list.setCurrentRow(1)
+    page._file_panel._list_widget.setCurrentRow(1)
     mp3_headers = [
         page._format_combo.model().item(i).text()
         for i in range(page._format_combo.count())
@@ -308,7 +308,7 @@ def test_all_files_queued_when_converting(
 ) -> None:
     """All loaded files produce a worker, regardless of which row is selected."""
     _add_files(page, "a.mp4", "b.mp4", "c.mp4", tmp_path=tmp_path)
-    page._file_list.setCurrentRow(1)
+    page._file_panel._list_widget.setCurrentRow(1)
     page._select_first_enabled()
 
     page._start_conversion()
@@ -344,8 +344,8 @@ def test_browse_button_adds_files(page: MediaPage, tmp_path: Path) -> None:
     ):
         page._drop_zone._open_file_dialog()
 
-    assert page._file_list.count() == 1
-    assert page._input_files[0].name == "song.mp3"
+    assert page._file_panel._list_widget.count() == 1
+    assert page._file_panel.files[0].name == "song.mp3"
 
 
 def test_browse_button_cancel_adds_nothing(page: MediaPage) -> None:
@@ -355,7 +355,7 @@ def test_browse_button_cancel_adds_nothing(page: MediaPage) -> None:
     ):
         page._drop_zone._open_file_dialog()
 
-    assert page._file_list.count() == 0
+    assert page._file_panel._list_widget.count() == 0
 
 
 def test_drop_zone_callback_wiring(page: MediaPage, tmp_path: Path) -> None:
@@ -363,7 +363,7 @@ def test_drop_zone_callback_wiring(page: MediaPage, tmp_path: Path) -> None:
     fake = tmp_path / "video.mp4"
     fake.touch()
     page._drop_zone._files_callback([fake])
-    assert page._file_list.count() == 1
+    assert page._file_panel._list_widget.count() == 1
 
 
 def test_drag_drop_adds_files(qtbot: QtBot, tmp_path: Path) -> None:
@@ -376,8 +376,8 @@ def test_drag_drop_adds_files(qtbot: QtBot, tmp_path: Path) -> None:
     event = _make_drop_event([QUrl.fromLocalFile(str(fake))])
     page._drop_zone.dropEvent(event)
 
-    assert page._file_list.count() == 1
-    assert page._input_files[0].name == "dropped.mp4"
+    assert page._file_panel._list_widget.count() == 1
+    assert page._file_panel.files[0].name == "dropped.mp4"
 
 
 def test_drag_drop_ignores_non_file_urls(qtbot: QtBot) -> None:
@@ -387,7 +387,7 @@ def test_drag_drop_ignores_non_file_urls(qtbot: QtBot) -> None:
 
     event = _make_drop_event([QUrl("https://example.com/video.mp4")])
     page._drop_zone.dropEvent(event)
-    assert page._file_list.count() == 0
+    assert page._file_panel._list_widget.count() == 0
 
 
 # --------------------------------------------------------------------------- #

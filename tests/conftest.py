@@ -50,3 +50,31 @@ def dummy_image(tmp_path: Path) -> Path:
     img = Image.new("RGB", (100, 100), color="red")
     img.save(img_path, format="JPEG")
     return img_path
+
+
+@pytest.fixture
+def results_panel(qtbot) -> "ResultsPanel":
+    from file_alchemy.ui.components import ResultsPanel
+    panel = ResultsPanel()
+    qtbot.addWidget(panel)
+    panel.show()
+    return panel
+
+
+@pytest.fixture
+def drop_zone(qtbot) -> "DropZone":
+    from file_alchemy.ui.components import DropZone
+    mock_callback = MagicMock()
+    dz = DropZone(files_callback=mock_callback)
+    dz._mock_cb = mock_callback  # Attach for assertions
+    qtbot.addWidget(dz)
+    return dz
+
+
+@pytest.fixture
+def file_list_panel(qtbot) -> "FileListPanel":
+    from file_alchemy.ui.components import FileListPanel
+    panel = FileListPanel()
+    qtbot.addWidget(panel)
+    panel.show()
+    return panel
