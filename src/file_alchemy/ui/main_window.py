@@ -12,6 +12,7 @@ from qfluentwidgets import (
     NavigationItemPosition,
 )
 
+from file_alchemy.ui.pages.compression_page import CompressionPage
 from file_alchemy.ui.pages.media_page import MediaPage
 
 
@@ -67,8 +68,16 @@ class MainWindow(FluentWindow):
         self._media_page = MediaPage()
         self.addSubInterface(
             self._media_page,
-            FluentIcon.VIDEO,
-            "Media",
+            FluentIcon.MEDIA,
+            "Convert",
+        )
+
+        # --- Compression page ---
+        self._compression_page = CompressionPage()
+        self.addSubInterface(
+            self._compression_page,
+            FluentIcon.ZIP_FOLDER,
+            "Compress",
         )
 
         # --- Bottom-pinned settings page ---

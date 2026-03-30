@@ -20,7 +20,6 @@ from pytestqt.qtbot import QtBot
 
 from file_alchemy.ui.pages.media_page import MediaPage
 
-
 # --------------------------------------------------------------------------- #
 # Helpers & Fixtures
 # --------------------------------------------------------------------------- #
@@ -340,7 +339,7 @@ def test_browse_button_adds_files(page: MediaPage, tmp_path: Path) -> None:
     fake.touch()
 
     with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getOpenFileNames",
+        "file_alchemy.ui.components.drop_zone.QFileDialog.getOpenFileNames",
         return_value=([str(fake)], ""),
     ):
         page._drop_zone._open_file_dialog()
@@ -351,7 +350,7 @@ def test_browse_button_adds_files(page: MediaPage, tmp_path: Path) -> None:
 
 def test_browse_button_cancel_adds_nothing(page: MediaPage) -> None:
     with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getOpenFileNames",
+        "file_alchemy.ui.components.drop_zone.QFileDialog.getOpenFileNames",
         return_value=([], ""),
     ):
         page._drop_zone._open_file_dialog()
