@@ -110,6 +110,26 @@ def test_parse_progress_calls_callback(
     assert captured[0] == pytest.approx(expected_pct, abs=0.01)
 
 
+@pytest.mark.parametrize(
+    "line, duration, offset, scale, expected_pct",
+    [
+        ("time=00:00:05.00", 10.0, 0.0, 50.0, 25.0),
+        ("time=00:00:05.00", 10.0, 50.0, 50.0, 75.0),
+        ("time=00:00:10.00", 10.0, 50.0, 50.0, 100.0),
+    ],
+)
+def test_parse_progress_scaled(
+    line: str, duration: float, offset: float, scale: float, expected_pct: float
+) -> None:
+    """_parse_progress handles offset and scale for multi-pass encoding."""
+    captured: list[float] = []
+    media_engine._parse_progress(
+        line, duration, captured.append, offset=offset, scale=scale
+    )
+    assert len(captured) == 1
+    assert captured[0] == pytest.approx(expected_pct, abs=0.01)
+
+
 def test_parse_progress_no_time_token() -> None:
     """Lines without time= should not invoke the callback."""
     captured: list[float] = []
@@ -237,3 +257,208 @@ def test_convert_indeterminate_progress(
         media_engine.convert(inp, out, progress_callback=progress_values.append)
 
     assert progress_values == []
+
+
+# --------------------------------------------------------------------------- #
+# convert_to_icon (mocked)
+# --------------------------------------------------------------------------- #
+
+
+def test_convert_to_ico_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+    """convert_to_icon() successfully produces an .ico using Pillow."""
+    inp = tmp_path / "input.png"
+    inp.touch()
+    out = tmp_path / "output.ico"
+
+    mock_image = MagicMock()
+    mock_image.size = (256, 256)
+    mock_image.mode = "RGBA"
+
+    with (
+        patch("PIL.Image.open", return_value=mock_image) as mock_open,
+        patch.object(media_engine, "convert") as mock_convert,
+    ):
+        result = media_engine.convert_to_icon(inp, out)
+
+    assert result == out.resolve()
+    # Verify that it first calls convert to extract a frame
+    mock_convert.assert_called_once()
+    assert "-vframes" in mock_convert.call_args[0][2]
+
+    # Verify Pillow interaction
+    mock_open.assert_called_once()
+    mock_image.save.assert_called_once_with(out, format="ICO")
+
+
+def test_convert_to_icns_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+    """convert_to_icon() successfully produces an .icns and handles mode conversion."""
+    inp = tmp_path / "input.png"
+    inp.touch()
+    out = tmp_path / "output.icns"
+
+    mock_image = MagicMock()
+    mock_image.size = (512, 512)
+    mock_image.mode = "RGB"  # Trigger convert("RGBA")
+    mock_image.convert.return_value = mock_image
+
+    with (
+        patch("PIL.Image.open", return_value=mock_image),
+        patch.object(media_engine, "convert"),
+    ):
+        result = media_engine.convert_to_icon(inp, out)
+
+    assert result == out.resolve()
+    mock_image.convert.assert_called_with("RGBA")
+    mock_image.save.assert_called_once_with(out, format="ICNS")
+
+
+def test_convert_to_icon_crops_non_square(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
+    """convert_to_icon() crops non-square inputs to center squares."""
+    inp = tmp_path / "input.png"
+    inp.touch()
+    out = tmp_path / "output.ico"
+
+    mock_image = MagicMock()
+    mock_image.size = (500, 250)  # Width > Height
+    mock_image.mode = "RGBA"
+    mock_image.crop.return_value = mock_image
+
+    with (
+        patch("PIL.Image.open", return_value=mock_image),
+        patch.object(media_engine, "convert"),
+    ):
+        media_engine.convert_to_icon(inp, out)
+
+    # Size is 250, so left = (500-250)//2 = 125, top = (250-250)//2 = 0
+    # crop((125, 0, 375, 250))
+    mock_image.crop.assert_called_once_with((125, 0, 375, 250))
+
+
+def test_convert_to_icon_raises_on_error(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
+    """convert_to_icon() raises MediaConversionError if Pillow fails."""
+    inp = tmp_path / "input.png"
+    inp.touch()
+    out = tmp_path / "output.ico"
+
+    with (
+        patch("PIL.Image.open", side_effect=Exception("Pillow crash")),
+        patch.object(media_engine, "convert"),
+    ):
+        with pytest.raises(media_engine.MediaConversionError, match="Failed to generate"):
+            media_engine.convert_to_icon(inp, out)
+
+
+# --------------------------------------------------------------------------- #
+# ico/icns to img (using standard convert)
+# --------------------------------------------------------------------------- #
+
+
+def test_convert_ico_to_png(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+    """Standard convert() handles .ico as input (delegating to FFmpeg)."""
+    inp = tmp_path / "input.ico"
+    inp.touch()
+    out = tmp_path / "output.png"
+
+    mock_process = MagicMock()
+    mock_process.returncode = 0
+    mock_process.stderr = iter([])
+
+    with patch("subprocess.Popen", return_value=mock_process) as mock_popen:
+        media_engine.convert(inp, out)
+
+    cmd = mock_popen.call_args[0][0]
+    # Check that input and output are in the command
+    assert str(inp) in cmd
+    assert str(out) in cmd
+
+
+# --------------------------------------------------------------------------- #
+# convert_two_pass (mocked)
+# --------------------------------------------------------------------------- #
+
+
+def test_convert_two_pass_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+    """convert_two_pass() runs two FFmpeg passes and cleans up logs."""
+    inp = tmp_path / "input.mp4"
+    inp.touch()
+    out = tmp_path / "output.mp4"
+
+    mock_process = MagicMock()
+    mock_process.returncode = 0
+    mock_process.stderr = iter(["frame=1 time=00:00:05.00\n"])
+
+    # Create dummy log files to verify cleanup
+    log1 = Path.cwd() / "ffmpeg2pass-0.log"
+    log1.touch()
+
+    def make_mock_process():
+        proc = MagicMock()
+        proc.returncode = 0
+        proc.stderr = iter(["frame=1 time=00:00:05.00\n"])
+        return proc
+
+    try:
+        with (
+            patch.object(
+                media_engine, "probe", return_value={"format": {"duration": "10.0"}}
+            ),
+            patch("subprocess.Popen", side_effect=[make_mock_process(), make_mock_process()]) as mock_popen,
+        ):
+            progress: list[float] = []
+            result = media_engine.convert_two_pass(
+                inp, out, progress_callback=progress.append
+            )
+
+        assert result == out.resolve()
+        assert mock_popen.call_count == 2
+
+        # Check pass 1 args: should have -pass 1 and output to null (NUL or /dev/null)
+        pass1_args = mock_popen.call_args_list[0][0][0]
+        assert "-pass" in pass1_args
+        assert "1" in pass1_args
+        assert "-f" in pass1_args
+        assert "null" in pass1_args
+
+        # Check pass 2 args: should have -pass 2 and real output path
+        pass2_args = mock_popen.call_args_list[1][0][0]
+        assert "-pass" in pass2_args
+        assert "2" in pass2_args
+        assert str(out) in pass2_args
+
+        # Check progress: 50% from pass 1 (5s/10s * 50% = 25%) and 75% from pass 2 (50% + 25%)
+        # Note: each pass will report progress.
+        assert 25.0 in progress
+        assert 75.0 in progress
+
+        # Verify log cleanup
+        assert not log1.exists()
+    finally:
+        log1.unlink(missing_ok=True)
+
+
+def test_convert_two_pass_failure_on_first_pass(
+    tmp_path: Path, mock_ffmpeg_paths: None
+) -> None:
+    """convert_two_pass() raises MediaConversionError if the first pass fails."""
+    inp = tmp_path / "input.mp4"
+    inp.touch()
+    out = tmp_path / "output.mp4"
+
+    mock_process = MagicMock()
+    mock_process.returncode = 1
+    mock_process.stderr = iter(["First pass error\n"])
+
+    with (
+        patch.object(
+            media_engine, "probe", return_value={"format": {"duration": "10.0"}}
+        ),
+        patch("subprocess.Popen", return_value=mock_process),
+    ):
+        with pytest.raises(
+            media_engine.MediaConversionError, match="FFmpeg pass 1 failed"
+        ):
+            media_engine.convert_two_pass(inp, out)
