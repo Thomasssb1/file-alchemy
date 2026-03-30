@@ -79,10 +79,10 @@ def test_drop_zone_browse_files_button(
 ) -> None:
     fake_file = tmp_path / "valid.mp4"
     mock_get_names.return_value = ([str(fake_file)], "")
-    
+
     # Simulate clicking the manual browse button
     drop_zone._browse_btn.clicked.emit()
-    
+
     # Must correctly process and invoke callback via picker dialog
     drop_zone._mock_cb.assert_called_once()
     assert drop_zone._mock_cb.call_args[0][0][0].name == "valid.mp4"
@@ -115,45 +115,49 @@ def test_drop_zone_drop_event(drop_zone: DropZone, tmp_path: Path) -> None:
     drop_zone._mock_cb.assert_called_once_with([fake_file])
 
 
-def test_results_panel_selection_highlights_correctly(results_panel: ResultsPanel) -> None:
+def test_results_panel_selection_highlights_correctly(
+    results_panel: ResultsPanel,
+) -> None:
     results_panel.add_success("Item 1")
     results_panel.add_warning("Item 2")
     results_panel.add_error("Item 3")
     assert results_panel.count == 3
-    
+
     list_widget = results_panel._list_widget
-    
+
     # Select the second item specifically (warning item)
     list_widget.setCurrentRow(1)
-    
+
     # Assert selection evaluates effectively in memory
     assert list_widget.currentRow() == 1
     selected_items = list_widget.selectedItems()
     assert len(selected_items) == 1
-    
+
     # Fetch nested itemWidget value to ensure proper evaluation of highlight
     widget = list_widget.itemWidget(selected_items[0])
     assert "Item 2" in widget.label.text()
 
 
-def test_file_list_panel_selection_changed(file_list_panel: FileListPanel, qtbot: QtBot) -> None:
+def test_file_list_panel_selection_changed(
+    file_list_panel: FileListPanel, qtbot: QtBot
+) -> None:
     # Adding items manually
     file1 = Path("/fake/file1.mp4")
     file2 = Path("/fake/file2.mp3")
-    
+
     with qtbot.waitSignal(file_list_panel.filesAdded):
         file_list_panel.add_files([file1, file2])
-    
+
     assert file_list_panel.count == 2
-    
+
     # Initially the first item should be selected
     assert file_list_panel.current_row == 0
     assert file_list_panel.files[file_list_panel.current_row] == file1
-    
+
     # Alter the selection explicitly to verify component event bridging
     with qtbot.waitSignal(file_list_panel.selectionChanged) as blocker:
         file_list_panel._list_widget.setCurrentRow(1)
-        
+
     assert blocker.args[0] == 1
     assert file_list_panel.current_row == 1
     assert file_list_panel.files[file_list_panel.current_row] == file2

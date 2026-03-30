@@ -54,12 +54,21 @@ class DropZone(QFrame):
 
         icon_label = QLabel(icon)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setStyleSheet("font-size: 32px;")
+        icon_label.setStyleSheet(
+            """
+            font-size: 32px;
+            """
+        )
         layout.addWidget(icon_label)
 
         hint = QLabel(text)
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet("color: #999; font-size: 13px;")
+        hint.setStyleSheet(
+            """
+            color: #999;
+            font-size: 13px;
+            """
+        )
         layout.addWidget(hint)
 
         self._browse_btn = PushButton("Browse…")

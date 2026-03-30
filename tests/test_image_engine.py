@@ -16,6 +16,7 @@ from file_alchemy.engines.image_engine import (
 )
 from file_alchemy.errors.media_conversion_error import MediaConversionError
 
+
 @pytest.mark.parametrize(
     "ext, expected",
     [
