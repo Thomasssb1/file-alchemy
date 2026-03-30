@@ -17,3 +17,6 @@
 - [ ] **Task Canceling System**: Add a "Stop/Cancel" button that securely interrupts the FFmpeg subprocess.
 - [ ] **Post-Batch Actions**: Add toggles to "Play sound on completion" or "Open output folder" when a massive queue finally finishes.
 - [ ] **Mac/Linux CI Build Matrix**: Expand the `.github/workflows/release.yml` matrix out to produce and upload compiled Darwin (macOS) and Linux targets.
+- [ ] UI Improvement: Add ability to hover file in FileListPanel to remove it from selected files.
+- [ ] UI Improvement: Add ability to right-click and remove a file from selected files.
+- [ ] Settings Feature: Add a toggle (enabled by default) to automatically remove an item from the selected files list upon successful conversion, to prevent duplicate re-runs.
