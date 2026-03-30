@@ -18,17 +18,17 @@ Universal file converter with FFmpeg integration and a modern Windows-inspired U
 python -m venv .venv
 
 # Install the application and development dependencies in editable mode
-.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.venv/bin/python -m pip install -e ".[dev]"
 ```
 
 ## 2. Running the Application
 
 ```bash
 # Run the application
-.venv\Scripts\python.exe -m file_alchemy
+.venv/bin/python -m file_alchemy
 
 # Alternatively, since it's installed, you can just run:
-.venv\Scripts\file-alchemy
+.venv/bin/file-alchemy
 ```
 
 ## 3. Testing
@@ -37,13 +37,13 @@ Tests run with coverage checks enabled by default (minimum 80% enforced):
 
 ```bash
 # Run all tests (coverage runs automatically)
-.venv\Scripts\python.exe -m pytest
+.venv/bin/python -m pytest
 
 # Run only the UI component tests
-.venv\Scripts\python.exe -m pytest tests/test_media_page.py -v
+.venv/bin/python -m pytest tests/test_media_page.py -v
 
 # Generate an HTML coverage report
-.venv\Scripts\python.exe -m pytest --cov-report=html
+.venv/bin/python -m pytest --cov-report=html
 ```
 
 Tests work headlessly in CI - `QT_QPA_PLATFORM=offscreen` is set automatically.
@@ -65,8 +65,8 @@ To bundle the application into a distribution folder containing the executable a
 Run this command from the root of the project:
 
 ```bash
-.venv\Scripts\pyinstaller "file_alchemy.spec"
+.venv/bin/pyinstaller "file_alchemy.spec"
 ```
 
-- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy/File Alchemy.exe`.
+- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy.app/` folder (on macOS) or `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy.app/Contents/MacOS/File Alchemy` or `dist/File Alchemy/File Alchemy`.
 - You can safely delete the `build/` folder that generates during the process.
