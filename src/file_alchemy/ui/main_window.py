@@ -28,7 +28,12 @@ class PlaceholderPage(QWidget):
 
         label = QLabel(title)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("font-size: 24px; color: #888;")
+        label.setStyleSheet(
+            """
+            font-size: 24px;
+            color: #888;
+            """
+        )
         layout.addWidget(label)
 
 

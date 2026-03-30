@@ -34,13 +34,24 @@ class ResultItemWidget(QWidget):
         layout.addWidget(self.icon_widget)
 
         self.label = QLabel(text)
-        self.label.setStyleSheet("background: transparent; border: none;")
+        self.label.setStyleSheet(
+            """
+            background: transparent;
+            border: none;
+            """
+        )
         layout.addWidget(self.label)
         layout.addStretch()
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(
-            f"ResultItemWidget {{ border: 1px solid {border_color}; border-radius: 4px; background: transparent; }}"
+            f"""
+            ResultItemWidget {{
+              border: 1px solid {border_color};
+              border-radius: 4px;
+              background: transparent;
+            }}
+            """
         )
 
 

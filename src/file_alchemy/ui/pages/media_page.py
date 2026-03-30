@@ -108,28 +108,35 @@ class MediaPage(QWidget):
         self._format_combo = QComboBox()
         self._format_combo.setMinimumWidth(180)
         self._format_combo.setStyleSheet(
-            "QComboBox {"
-            "  background: #2d2d2d;"
-            "  color: #ffffff;"
-            "  border: 1px solid #3d3d3d;"
-            "  border-radius: 5px;"
-            "  padding: 4px 8px;"
-            "  font-size: 13px;"
-            "}"
-            "QComboBox::drop-down { border: none; }"
-            "QComboBox QAbstractItemView {"
-            "  background: #2d2d2d;"
-            "  color: #ffffff;"
-            "  selection-background-color: #404040;"
-            "  border: 1px solid #3d3d3d;"
-            "}"
+            """
+            QComboBox {
+              background: #2d2d2d;
+              color: #ffffff;
+              border: 1px solid #3d3d3d;
+              border-radius: 5px;
+              padding: 4px 8px;
+              font-size: 13px;
+            }
+            QComboBox::drop-down { border: none; }
+            QComboBox QAbstractItemView {
+              background: #2d2d2d;
+              color: #ffffff;
+              selection-background-color: #404040;
+              border: 1px solid #3d3d3d;
+            }
+            """
         )
         col.addWidget(self._format_combo)
 
         col.addSpacing(8)
 
         self._output_dir_label = QLabel("Output: same folder as input")
-        self._output_dir_label.setStyleSheet("color: #888; font-size: 12px;")
+        self._output_dir_label.setStyleSheet(
+            """
+            color: #888;
+            font-size: 12px;
+            """
+        )
         col.addWidget(self._output_dir_label)
 
         pick_output_btn = PushButton(FluentIcon.FOLDER, "Choose output folder…")
