@@ -13,6 +13,10 @@ from pathlib import Path
 from file_alchemy.errors.ffmpeg_not_found_error import FFmpegNotFoundError
 from file_alchemy.errors.media_conversion_error import MediaConversionError
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from file_alchemy.engines.compression_options import CompressionOptions
+
 
 def _require_ffmpeg() -> tuple[str, str]:
     """Return (ffmpeg, ffprobe) executable paths, raising if not found."""
@@ -341,3 +345,34 @@ def convert_two_pass(
         log_file.unlink(missing_ok=True)
 
     return output_path.resolve()
+
+
+def compress_media(
+    input_path: str | Path,
+    output_path: str | Path,
+    options: "CompressionOptions",
+    progress_callback: Callable[[float], None] | None = None,
+) -> Path:
+    """Compress video or audio by calculating ffmpeg arguments via options."""
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+    output_ext = output_path.suffix.lstrip(".").lower()
+
+    duration_seconds = 0.0
+    try:
+        meta = probe(input_path)
+        raw = meta.get("format", {}).get("duration")
+        if raw is not None:
+            duration_seconds = float(raw)
+    except Exception:
+        pass
+
+    args = options.to_ffmpeg_args(output_ext, duration_seconds)
+
+    if options.requires_two_pass(output_ext):
+        return convert_two_pass(
+            input_path, output_path, extra_args=args, progress_callback=progress_callback
+        )
+    return convert(
+        input_path, output_path, extra_args=args, progress_callback=progress_callback
+    )

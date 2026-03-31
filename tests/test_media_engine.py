@@ -55,7 +55,7 @@ def test_require_ffmpeg_returns_paths_when_present() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_probe_returns_parsed_dict(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_probe_returns_parsed_dict(tmp_path: Path, _: None) -> None:
     """probe() parses ffprobe JSON output and returns a dict."""
     fake_file = tmp_path / "input.mp4"
     fake_file.touch()
@@ -74,7 +74,7 @@ def test_probe_returns_parsed_dict(tmp_path: Path, mock_ffmpeg_paths: None) -> N
     assert "-show_streams" in call_args
 
 
-def test_probe_raises_on_failure(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_probe_raises_on_failure(tmp_path: Path, _: None) -> None:
     """probe() raises MediaConversionError when ffprobe exits with non-zero status."""
     fake_file = tmp_path / "non_existent.mp4"
 
@@ -156,7 +156,7 @@ def test_parse_progress_zero_duration_no_division() -> None:
 
 
 def test_convert_returns_resolved_output_path(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert() returns the resolved output path on success."""
     inp = tmp_path / "input.wav"
@@ -179,7 +179,7 @@ def test_convert_returns_resolved_output_path(
 
 
 def test_convert_raises_on_nonzero_returncode(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert() raises CalledProcessError when FFmpeg exits non-zero."""
     inp = tmp_path / "bad.mp4"
@@ -198,7 +198,7 @@ def test_convert_raises_on_nonzero_returncode(
             media_engine.convert(inp, out)
 
 
-def test_convert_extra_args_forwarded(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_extra_args_forwarded(tmp_path: Path, _: None) -> None:
     """Extra CLI args are included in the command passed to Popen."""
     inp = tmp_path / "in.mp4"
     inp.touch()
@@ -220,7 +220,7 @@ def test_convert_extra_args_forwarded(tmp_path: Path, mock_ffmpeg_paths: None) -
 
 
 def test_convert_without_progress_callback(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert() works correctly when no progress callback is given."""
     inp = tmp_path / "in.ogg"
@@ -238,7 +238,7 @@ def test_convert_without_progress_callback(
 
 
 def test_convert_indeterminate_progress(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert() gracefully falls back to duration=0 if probe() raises an exception."""
     inp = tmp_path / "in.mp4"
@@ -264,7 +264,7 @@ def test_convert_indeterminate_progress(
 # --------------------------------------------------------------------------- #
 
 
-def test_convert_to_ico_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_to_ico_success(tmp_path: Path, _: None) -> None:
     """convert_to_icon() successfully produces an .ico using Pillow."""
     inp = tmp_path / "input.png"
     inp.touch()
@@ -290,7 +290,7 @@ def test_convert_to_ico_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None
     mock_image.save.assert_called_once_with(out, format="ICO")
 
 
-def test_convert_to_icns_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_to_icns_success(tmp_path: Path, _: None) -> None:
     """convert_to_icon() successfully produces an .icns and handles mode conversion."""
     inp = tmp_path / "input.png"
     inp.touch()
@@ -313,7 +313,7 @@ def test_convert_to_icns_success(tmp_path: Path, mock_ffmpeg_paths: None) -> Non
 
 
 def test_convert_to_icon_crops_non_square(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert_to_icon() crops non-square inputs to center squares."""
     inp = tmp_path / "input.png"
@@ -337,7 +337,7 @@ def test_convert_to_icon_crops_non_square(
 
 
 def test_convert_to_icon_raises_on_error(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert_to_icon() raises MediaConversionError if Pillow fails."""
     inp = tmp_path / "input.png"
@@ -357,7 +357,7 @@ def test_convert_to_icon_raises_on_error(
 # --------------------------------------------------------------------------- #
 
 
-def test_convert_ico_to_png(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_ico_to_png(tmp_path: Path, _: None) -> None:
     """Standard convert() handles .ico as input (delegating to FFmpeg)."""
     inp = tmp_path / "input.ico"
     inp.touch()
@@ -381,7 +381,7 @@ def test_convert_ico_to_png(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_convert_two_pass_success(tmp_path: Path, mock_ffmpeg_paths: None) -> None:
+def test_convert_two_pass_success(tmp_path: Path, _: None) -> None:
     """convert_two_pass() runs two FFmpeg passes and cleans up logs."""
     inp = tmp_path / "input.mp4"
     inp.touch()
@@ -441,7 +441,7 @@ def test_convert_two_pass_success(tmp_path: Path, mock_ffmpeg_paths: None) -> No
 
 
 def test_convert_two_pass_failure_on_first_pass(
-    tmp_path: Path, mock_ffmpeg_paths: None
+    tmp_path: Path, _: None
 ) -> None:
     """convert_two_pass() raises MediaConversionError if the first pass fails."""
     inp = tmp_path / "input.mp4"
@@ -462,3 +462,83 @@ def test_convert_two_pass_failure_on_first_pass(
             media_engine.MediaConversionError, match="FFmpeg pass 1 failed"
         ):
             media_engine.convert_two_pass(inp, out)
+
+
+# --------------------------------------------------------------------------- #
+# compress_media (mocked)
+# --------------------------------------------------------------------------- #
+
+
+def test_compress_media_gets_duration_and_uses_convert(
+    tmp_path: Path, _: None
+) -> None:
+    """compress_media gets duration from probe and routes to convert (one-pass)."""
+    inp = tmp_path / "input.mp4"
+    inp.touch()
+    out = tmp_path / "output.mp4"
+
+    mock_options = MagicMock()
+    mock_options.to_ffmpeg_args.return_value = ["-b:v", "1M"]
+    mock_options.requires_two_pass.return_value = False
+
+    with (
+        patch.object(media_engine, "probe", return_value={"format": {"duration": "12.5"}}) as mock_probe,
+        patch.object(media_engine, "convert", return_value=out) as mock_convert,
+    ):
+        result = media_engine.compress_media(inp, out, options=mock_options)
+
+        assert result == out.resolve()
+        mock_probe.assert_called_once_with(inp)
+        mock_options.to_ffmpeg_args.assert_called_once_with("mp4", 12.5)
+        mock_convert.assert_called_once_with(
+            inp, out, extra_args=["-b:v", "1M"], progress_callback=None
+        )
+
+
+def test_compress_media_probe_fails_falls_back_to_zero_duration(
+    tmp_path: Path, _: None
+) -> None:
+    """compress_media falls back to duration=0 if probe raises an exception."""
+    inp = tmp_path / "input.mp4"
+    inp.touch()
+    out = tmp_path / "output.mp4"
+
+    mock_options = MagicMock()
+    mock_options.to_ffmpeg_args.return_value = ["-b:v", "1M"]
+    mock_options.requires_two_pass.return_value = False
+
+    with (
+        patch.object(media_engine, "probe", side_effect=Exception("Probe crash")) as mock_probe,
+        patch.object(media_engine, "convert", return_value=out) as mock_convert,
+    ):
+        result = media_engine.compress_media(inp, out, options=mock_options)
+
+        assert result == out.resolve()
+        mock_probe.assert_called_once_with(inp)
+        mock_options.to_ffmpeg_args.assert_called_once_with("mp4", 0.0)
+        mock_convert.assert_called_once()
+
+
+def test_compress_media_requires_two_pass(
+    tmp_path: Path, _: None
+) -> None:
+    """compress_media calls convert_two_pass if options require it."""
+    inp = tmp_path / "input.mp4"
+    inp.touch()
+    out = tmp_path / "output.mp4"
+
+    mock_options = MagicMock()
+    mock_options.to_ffmpeg_args.return_value = ["-b:v", "1M"]
+    mock_options.requires_two_pass.return_value = True
+
+    with (
+        patch.object(media_engine, "probe", return_value={"format": {"duration": "10.0"}}),
+        patch.object(media_engine, "convert_two_pass", return_value=out) as mock_two_pass,
+    ):
+        result = media_engine.compress_media(inp, out, options=mock_options)
+
+        assert result == out.resolve()
+        mock_options.requires_two_pass.assert_called_once_with("mp4")
+        mock_two_pass.assert_called_once_with(
+            inp, out, extra_args=["-b:v", "1M"], progress_callback=None
+        )
