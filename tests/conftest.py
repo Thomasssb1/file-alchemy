@@ -11,6 +11,11 @@ from PIL import Image
 from file_alchemy.engines import media_engine
 from file_alchemy.engines.registry import ConversionRegistry
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from file_alchemy.ui.components import ResultsPanel, DropZone, FileListPanel
+
 # Use Qt's offscreen platform when no display is available (CI / headless).
 # setdefault means this is a no-op when a real display is already configured.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -55,6 +60,7 @@ def dummy_image(tmp_path: Path) -> Path:
 @pytest.fixture
 def results_panel(qtbot) -> "ResultsPanel":
     from file_alchemy.ui.components import ResultsPanel
+
     panel = ResultsPanel()
     qtbot.addWidget(panel)
     panel.show()
@@ -64,6 +70,7 @@ def results_panel(qtbot) -> "ResultsPanel":
 @pytest.fixture
 def drop_zone(qtbot) -> "DropZone":
     from file_alchemy.ui.components import DropZone
+
     mock_callback = MagicMock()
     dz = DropZone(files_callback=mock_callback)
     dz._mock_cb = mock_callback  # Attach for assertions
@@ -74,6 +81,7 @@ def drop_zone(qtbot) -> "DropZone":
 @pytest.fixture
 def file_list_panel(qtbot) -> "FileListPanel":
     from file_alchemy.ui.components import FileListPanel
+
     panel = FileListPanel()
     qtbot.addWidget(panel)
     panel.show()

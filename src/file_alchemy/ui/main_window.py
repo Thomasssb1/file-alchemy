@@ -59,6 +59,18 @@ class MainWindow(FluentWindow):
         self._set_icon()
         self.resize(1000, 650)
 
+        # Move window control buttons to the top-left on macOS and Linux.
+        # macOS style: [Close] [Min] [Max] ... [Title]
+        if sys.platform in ("darwin", "linux"):
+            self.titleBar.hBoxLayout.removeWidget(self.titleBar.minBtn)
+            self.titleBar.hBoxLayout.removeWidget(self.titleBar.maxBtn)
+            self.titleBar.hBoxLayout.removeWidget(self.titleBar.closeBtn)
+
+            self.titleBar.hBoxLayout.insertWidget(0, self.titleBar.closeBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            self.titleBar.hBoxLayout.insertWidget(1, self.titleBar.minBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            self.titleBar.hBoxLayout.insertWidget(2, self.titleBar.maxBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            self.titleBar.hBoxLayout.insertSpacing(3, 12)
+
         # Centre on screen
         screen = self.screen()
         if screen:

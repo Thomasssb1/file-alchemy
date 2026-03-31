@@ -20,3 +20,4 @@
 - [ ] UI Improvement: Add ability to hover file in FileListPanel to remove it from selected files.
 - [ ] UI Improvement: Add ability to right-click and remove a file from selected files.
 - [ ] Settings Feature: Add a toggle (enabled by default) to automatically remove an item from the selected files list upon successful conversion, to prevent duplicate re-runs.
+- [ ] **Customizable Window Controls**: Add a setting to allow users to manually choose between left-aligned (macOS style) and right-aligned (Windows style) window control buttons, overriding platform defaults.
