@@ -16,7 +16,7 @@ from file_alchemy.errors.media_conversion_error import MediaConversionError
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from file_alchemy.engines.compression_options import CompressionOptions
+    from file_alchemy.engines.compression.compression_options import CompressionOptions
 
 
 def _require_ffmpeg() -> tuple[str, str]:

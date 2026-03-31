@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-from file_alchemy.engines.compression_options import CompressionMode, CompressionOptions
+from file_alchemy.engines.compression.compression_mode import CompressionMode
+from file_alchemy.engines.compression.compression_options import CompressionOptions
 from file_alchemy.engines.image_engine import (
     _binary_search_quality,
     _resolve_format,

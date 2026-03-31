@@ -26,14 +26,15 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
-from file_alchemy.engines.compression_options import (
-    CompressionMode,
+from file_alchemy.engines.compression.compression_mode import CompressionMode
+from file_alchemy.engines.compression.compression_options import (
     CompressionOptions,
     ext_category,
 )
-from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
+from file_alchemy.ui.components import DropZone, FileListPanel
+from file_alchemy.ui.components.results.results_panel import ResultsPanel
 from file_alchemy.ui.pages.base_page import BaseBatchPage
-from file_alchemy.ui.workers import CompressionWorker
+from file_alchemy.ui.pages.compression.compression_worker import CompressionWorker
 
 
 def _format_size(size_bytes: int) -> str:

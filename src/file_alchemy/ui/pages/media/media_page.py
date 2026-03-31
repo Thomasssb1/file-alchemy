@@ -28,9 +28,10 @@ from file_alchemy.engines.registry import (
     DEFAULT_REGISTRY,
     _category_of,
 )
-from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
+from file_alchemy.ui.components import DropZone, FileListPanel
+from file_alchemy.ui.components.results.results_panel import ResultsPanel
 from file_alchemy.ui.pages.base_page import BaseBatchPage
-from file_alchemy.ui.workers import ConversionWorker
+from file_alchemy.ui.pages.media.conversion_worker import ConversionWorker
 
 
 class MediaPage(BaseBatchPage):

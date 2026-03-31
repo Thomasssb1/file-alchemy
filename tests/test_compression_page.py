@@ -9,8 +9,11 @@ import pytest
 from PyQt6.QtCore import QMimeData, QPointF, QUrl, Qt
 from PyQt6.QtGui import QDropEvent
 
-from file_alchemy.engines.compression_options import CompressionMode
-from file_alchemy.ui.pages.compression_page import CompressionPage, _format_size
+from file_alchemy.engines.compression.compression_mode import CompressionMode
+from file_alchemy.ui.pages.compression.compression_page import (
+    CompressionPage,
+    _format_size,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -550,7 +553,7 @@ def test_completing_one_advances_queue(
     assert mock_compression_worker.call_count == 1
 
     # Simulate the first worker finishing
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.compression.compression_page.InfoBar"):
         compression_page._on_finished(out_a, 1000, 800)
 
     # A second worker should now have been created for b.mp3
@@ -572,7 +575,7 @@ def test_queue_exhausted_resets_ui(
 
     compression_page._start_compression()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.compression.compression_page.InfoBar"):
         compression_page._on_finished(out_a, 500, 400)  # file 1 done
         compression_page._on_finished(out_b, 300, 250)  # file 2 done
 
@@ -629,7 +632,7 @@ def test_mixed_success_and_error_batch(
 
     compression_page._start_compression()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.compression.compression_page.InfoBar"):
         compression_page._on_finished(out, 1000, 800)
 
     with patch("file_alchemy.ui.pages.base_page.InfoBar"):
@@ -651,7 +654,9 @@ def test_on_finished_reduction_in_results_panel(
     out_path = tmp_path / "video_compressed.mp4"
     out_path.touch()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.InfoBar"
+    ) as mock_bar:
         compression_page._pending = 1
         # 10 MB → 5 MB (50% reduction)
         compression_page._on_finished(out_path, 10 * 1024 * 1024, 5 * 1024 * 1024)
@@ -674,7 +679,9 @@ def test_on_finished_size_increase_in_results_panel(
     out_path = tmp_path / "audio_compressed.flac"
     out_path.touch()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.InfoBar"
+    ) as mock_bar:
         compression_page._pending = 1
         # 10 MB → 15 MB (50% increase)
         compression_page._on_finished(out_path, 10 * 1024 * 1024, 15 * 1024 * 1024)
@@ -693,7 +700,9 @@ def test_on_finished_zero_byte_original_no_crash(
     out_path = tmp_path / "out.png"
     out_path.touch()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.InfoBar"
+    ) as mock_bar:
         compression_page._pending = 1
         compression_page._on_finished(out_path, 0, 0)
 
@@ -708,7 +717,9 @@ def test_on_finished_exact_same_size(
     out_path = tmp_path / "out.mp3"
     out_path.touch()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.InfoBar"
+    ) as mock_bar:
         compression_page._pending = 1
         compression_page._on_finished(out_path, 5000, 5000)
 
@@ -725,7 +736,9 @@ def test_on_finished_infobar_is_closable(
     out_path = tmp_path / "out.mp4"
     out_path.touch()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.InfoBar"
+    ) as mock_bar:
         compression_page._pending = 1
         compression_page._on_finished(out_path, 1000, 800)
 

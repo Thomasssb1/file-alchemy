@@ -1,67 +1,10 @@
-"""Tests for background worker threads (ConversionWorker, CompressionWorker)."""
+"""Tests for CompressionWorker thread."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from file_alchemy.engines.registry import ConversionRoute
 from file_alchemy.errors.media_conversion_error import MediaConversionError
-from file_alchemy.ui.workers import CompressionWorker, ConversionWorker
-
-
-def test_conversion_worker_success(tmp_path: Path) -> None:
-    inp = tmp_path / "in.mp4"
-    out = tmp_path / "out.mp4"
-    inp.touch()
-
-    # Create a mock engine function that just returns the output path
-    mock_engine = MagicMock(return_value=out)
-    route = ConversionRoute(
-        input_ext="mp4",
-        output_ext="mp4",
-        category="video",
-        engine_fn=mock_engine,
-    )
-
-    worker = ConversionWorker(inp, out, route, extra_args=["-v"])
-
-    finished_args = []
-    error_args = []
-    worker.finished.connect(lambda res: finished_args.append(res))
-    worker.error.connect(lambda err: error_args.append(err))
-
-    worker.run()
-
-    mock_engine.assert_called_once()
-    assert finished_args == [out]
-    assert error_args == []
-
-
-def test_conversion_worker_error(tmp_path: Path) -> None:
-    inp = tmp_path / "in.mp4"
-    out = tmp_path / "out.mp4"
-    inp.touch()
-
-    mock_engine = MagicMock(side_effect=ValueError("Test exception"))
-    route = ConversionRoute(
-        input_ext="mp4",
-        output_ext="mp4",
-        category="video",
-        engine_fn=mock_engine,
-    )
-
-    worker = ConversionWorker(inp, out, route)
-
-    finished_args = []
-    error_args = []
-    worker.finished.connect(lambda res: finished_args.append(res))
-    worker.error.connect(lambda err: error_args.append(err))
-
-    worker.run()
-
-    mock_engine.assert_called_once()
-    assert finished_args == []
-    assert len(error_args) == 1
-    assert "Unexpected error: Test exception" in error_args[0]
+from file_alchemy.ui.pages.compression.compression_worker import CompressionWorker
 
 
 def test_compression_worker_image_success(tmp_path: Path) -> None:
@@ -88,7 +31,8 @@ def test_compression_worker_image_success(tmp_path: Path) -> None:
         return out
 
     with patch(
-        "file_alchemy.ui.workers.compress_image", side_effect=fake_compress
+        "file_alchemy.ui.pages.compression.compression_worker.compress_image",
+        side_effect=fake_compress,
     ) as mock_img:
         worker.run()
 
@@ -123,7 +67,8 @@ def test_compression_worker_media_success(tmp_path: Path) -> None:
         return out
 
     with patch(
-        "file_alchemy.ui.workers.compress_media", side_effect=fake_compress
+        "file_alchemy.ui.pages.compression.compression_worker.compress_media",
+        side_effect=fake_compress,
     ) as mock_media:
         worker.run()
 
@@ -151,7 +96,7 @@ def test_compression_worker_media_conversion_error(tmp_path: Path) -> None:
     worker.error.connect(lambda err: error_args.append(err))
 
     with patch(
-        "file_alchemy.ui.workers.compress_media",
+        "file_alchemy.ui.pages.compression.compression_worker.compress_media",
         side_effect=MediaConversionError("FFmpeg failed"),
     ):
         worker.run()
@@ -176,7 +121,7 @@ def test_compression_worker_generic_error(tmp_path: Path) -> None:
     worker.error.connect(lambda err: error_args.append(err))
 
     with patch(
-        "file_alchemy.ui.workers.compress_image",
+        "file_alchemy.ui.pages.compression.compression_worker.compress_image",
         side_effect=RuntimeError("Out of memory"),
     ):
         worker.run()

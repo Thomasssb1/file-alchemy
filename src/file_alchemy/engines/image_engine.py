@@ -8,7 +8,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from file_alchemy.engines.compression_options import CompressionMode, CompressionOptions
+from file_alchemy.engines.compression.compression_mode import CompressionMode
+from file_alchemy.engines.compression.compression_options import CompressionOptions
 from file_alchemy.errors.media_conversion_error import MediaConversionError
 
 # Pillow format names keyed by file extension

@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from file_alchemy.ui.components import ResultsPanel, DropZone, FileListPanel
-    from file_alchemy.ui.pages.compression_page import CompressionPage
+    from file_alchemy.ui.pages.compression.compression_page import CompressionPage
 
 # Use Qt's offscreen platform when no display is available (CI / headless).
 # setdefault means this is a no-op when a real display is already configured.
@@ -93,7 +93,7 @@ def file_list_panel(qtbot) -> "FileListPanel":
 @pytest.fixture()
 def compression_page(qtbot: QtBot) -> "CompressionPage":
     """Create a CompressionPage and register it with qtbot for cleanup."""
-    from file_alchemy.ui.pages.compression_page import CompressionPage
+    from file_alchemy.ui.pages.compression.compression_page import CompressionPage
 
     p = CompressionPage()
     qtbot.addWidget(p)
@@ -104,7 +104,9 @@ def compression_page(qtbot: QtBot) -> "CompressionPage":
 @pytest.fixture()
 def mock_compression_worker():
     """Patch CompressionWorker so _start_compression never spawns a thread."""
-    with patch("file_alchemy.ui.pages.compression_page.CompressionWorker") as cls:
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.CompressionWorker"
+    ) as cls:
         mock_w = MagicMock()
         mock_w.progress = MagicMock()
         mock_w.finished = MagicMock()

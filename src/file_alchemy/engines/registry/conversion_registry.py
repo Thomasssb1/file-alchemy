@@ -1,3 +1,5 @@
+"""Registry for media conversion routes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -33,4 +35,5 @@ class ConversionRegistry:
 
     @property
     def all_routes(self) -> list[ConversionRoute]:
+        """Return a list of all registered conversion routes."""
         return list(self._routes.values())

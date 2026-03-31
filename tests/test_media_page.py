@@ -18,7 +18,7 @@ from PyQt6.QtCore import QMimeData, QPointF, QUrl, Qt
 from PyQt6.QtGui import QDropEvent
 from pytestqt.qtbot import QtBot
 
-from file_alchemy.ui.pages.media_page import MediaPage
+from file_alchemy.ui.pages.media.media_page import MediaPage
 
 # --------------------------------------------------------------------------- #
 # Helpers & Fixtures
@@ -65,7 +65,7 @@ def page(qtbot: QtBot) -> MediaPage:
 @pytest.fixture()
 def mock_conversion_worker():
     """Patch ConversionWorker so _start_conversion never spawns a thread."""
-    with patch("file_alchemy.ui.pages.media_page.ConversionWorker") as cls:
+    with patch("file_alchemy.ui.pages.media.media_page.ConversionWorker") as cls:
         mock_w = MagicMock()
         mock_w.progress = MagicMock()
         mock_w.finished = MagicMock()
@@ -433,7 +433,7 @@ def test_progress_bar_hidden_after_successful_conversion(
 ) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.media.media_page.InfoBar"):
         page._on_finished(tmp_path / "out.mp3")
 
     assert not page._progress_bar.isVisible()
@@ -444,7 +444,7 @@ def test_infobar_success_shown_after_conversion(
     page: MediaPage, tmp_path: Path
 ) -> None:
     page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar") as mock:
+    with patch("file_alchemy.ui.pages.media.media_page.InfoBar") as mock:
         page._on_finished(tmp_path / "out.mp3")
     mock.success.assert_called_once()
 
@@ -452,7 +452,7 @@ def test_infobar_success_shown_after_conversion(
 def test_progress_bar_hidden_after_error(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.media.media_page.InfoBar"):
         page._on_error("FFmpeg conversion failed with code 1")
 
     assert not page._progress_bar.isVisible()

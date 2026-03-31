@@ -1,3 +1,5 @@
+"""Data models for conversion routes."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

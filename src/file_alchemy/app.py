@@ -12,10 +12,10 @@ finally:
     sys.stdout.close()
     sys.stdout = _original_stdout
 
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont  # noqa: E402
+from PyQt6.QtWidgets import QApplication  # noqa: E402
 
-from file_alchemy.ui.main_window import MainWindow
+from file_alchemy.ui.main_window import MainWindow  # noqa: E402
 
 
 def main() -> None:

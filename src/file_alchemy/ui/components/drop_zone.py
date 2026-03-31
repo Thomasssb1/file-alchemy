@@ -83,10 +83,12 @@ class DropZone(QFrame):
             self._files_callback([Path(p) for p in paths])
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # type: ignore[override]
+        """Handle drag enter events to accept files."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent) -> None:  # type: ignore[override]
+        """Handle file drop events and trigger the callback."""
         urls = event.mimeData().urls()
         paths = [Path(u.toLocalFile()) for u in urls if u.isLocalFile()]
         if paths:

@@ -5,36 +5,15 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QVBoxLayout, QLabel, QWidget
 from qfluentwidgets import (
     FluentIcon,
     FluentWindow,
     NavigationItemPosition,
 )
 
-from file_alchemy.ui.pages.compression_page import CompressionPage
-from file_alchemy.ui.pages.media_page import MediaPage
-
-
-class PlaceholderPage(QWidget):
-    """Temporary placeholder page shown inside navigation tabs."""
-
-    def __init__(self, title: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName(title.replace(" ", "_"))
-
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        label = QLabel(title)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(
-            """
-            font-size: 24px;
-            color: #888;
-            """
-        )
-        layout.addWidget(label)
+from file_alchemy.ui.pages.compression.compression_page import CompressionPage
+from file_alchemy.ui.pages.media.media_page import MediaPage
+from file_alchemy.ui.pages.placeholder_page import PlaceholderPage
 
 
 class MainWindow(FluentWindow):
