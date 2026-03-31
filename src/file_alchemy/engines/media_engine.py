@@ -14,6 +14,7 @@ from file_alchemy.errors.ffmpeg_not_found_error import FFmpegNotFoundError
 from file_alchemy.errors.media_conversion_error import MediaConversionError
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from file_alchemy.engines.compression_options import CompressionOptions
 
@@ -131,9 +132,7 @@ def _execute_ffmpeg(
     for line in process.stderr:
         stderr_lines.append(line)
         if progress_callback:
-            _parse_progress(
-                line, duration_seconds, progress_callback, offset, scale
-            )
+            _parse_progress(line, duration_seconds, progress_callback, offset, scale)
 
     process.wait()
     if process.returncode != 0:
@@ -380,7 +379,10 @@ def compress_media(
 
     if options.requires_two_pass(output_ext):
         return convert_two_pass(
-            input_path, output_path, extra_args=args, progress_callback=progress_callback
+            input_path,
+            output_path,
+            extra_args=args,
+            progress_callback=progress_callback,
         )
     return convert(
         input_path, output_path, extra_args=args, progress_callback=progress_callback

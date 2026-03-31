@@ -77,7 +77,9 @@ def test_compression_worker_image_success(tmp_path: Path) -> None:
     finished_args = []
     error_args = []
     # signature: finished(object, int, int)
-    worker.finished.connect(lambda res, orig, new: finished_args.append((res, orig, new)))
+    worker.finished.connect(
+        lambda res, orig, new: finished_args.append((res, orig, new))
+    )
     worker.error.connect(lambda err: error_args.append(err))
 
     # Mock compress_image to simulate a compressed output file
@@ -85,7 +87,9 @@ def test_compression_worker_image_success(tmp_path: Path) -> None:
         out.write_bytes(b"compressed")  # 10 bytes
         return out
 
-    with patch("file_alchemy.ui.workers.compress_image", side_effect=fake_compress) as mock_img:
+    with patch(
+        "file_alchemy.ui.workers.compress_image", side_effect=fake_compress
+    ) as mock_img:
         worker.run()
 
     mock_img.assert_called_once()
@@ -109,14 +113,18 @@ def test_compression_worker_media_success(tmp_path: Path) -> None:
 
     finished_args = []
     error_args = []
-    worker.finished.connect(lambda res, orig, new: finished_args.append((res, orig, new)))
+    worker.finished.connect(
+        lambda res, orig, new: finished_args.append((res, orig, new))
+    )
     worker.error.connect(lambda err: error_args.append(err))
 
     def fake_compress(*args, **kwargs):
         out.write_bytes(b"smaller")  # 7 bytes
         return out
 
-    with patch("file_alchemy.ui.workers.compress_media", side_effect=fake_compress) as mock_media:
+    with patch(
+        "file_alchemy.ui.workers.compress_media", side_effect=fake_compress
+    ) as mock_media:
         worker.run()
 
     mock_media.assert_called_once()
@@ -137,10 +145,15 @@ def test_compression_worker_media_conversion_error(tmp_path: Path) -> None:
 
     finished_args = []
     error_args = []
-    worker.finished.connect(lambda res, orig, new: finished_args.append((res, orig, new)))
+    worker.finished.connect(
+        lambda res, orig, new: finished_args.append((res, orig, new))
+    )
     worker.error.connect(lambda err: error_args.append(err))
 
-    with patch("file_alchemy.ui.workers.compress_media", side_effect=MediaConversionError("FFmpeg failed")):
+    with patch(
+        "file_alchemy.ui.workers.compress_media",
+        side_effect=MediaConversionError("FFmpeg failed"),
+    ):
         worker.run()
 
     assert finished_args == []
@@ -157,10 +170,15 @@ def test_compression_worker_generic_error(tmp_path: Path) -> None:
 
     finished_args = []
     error_args = []
-    worker.finished.connect(lambda res, orig, new: finished_args.append((res, orig, new)))
+    worker.finished.connect(
+        lambda res, orig, new: finished_args.append((res, orig, new))
+    )
     worker.error.connect(lambda err: error_args.append(err))
 
-    with patch("file_alchemy.ui.workers.compress_image", side_effect=RuntimeError("Out of memory")):
+    with patch(
+        "file_alchemy.ui.workers.compress_image",
+        side_effect=RuntimeError("Out of memory"),
+    ):
         worker.run()
 
     assert finished_args == []

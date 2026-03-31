@@ -63,15 +63,19 @@ class MainWindow(FluentWindow):
         # macOS style: [Close] [Min] [Max] ... [Title]
         if sys.platform in ("darwin", "linux"):
             layout = self.titleBar.hBoxLayout
-            layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            
+            layout.setAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+
             # More robust removal
             layout.removeWidget(self.titleBar.minBtn)
             layout.removeWidget(self.titleBar.maxBtn)
             layout.removeWidget(self.titleBar.closeBtn)
 
             # Insert buttons at the beginning (Close, Min, Max)
-            layout.insertWidget(0, self.titleBar.closeBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            layout.insertWidget(
+                0, self.titleBar.closeBtn, 0, Qt.AlignmentFlag.AlignLeft
+            )
             layout.insertWidget(1, self.titleBar.minBtn, 0, Qt.AlignmentFlag.AlignLeft)
             layout.insertWidget(2, self.titleBar.maxBtn, 0, Qt.AlignmentFlag.AlignLeft)
             layout.insertSpacing(3, 10)
@@ -79,7 +83,7 @@ class MainWindow(FluentWindow):
             # macOS doesn't typically show an icon in the title bar
             if sys.platform == "darwin" and hasattr(self.titleBar, "iconLabel"):
                 self.titleBar.iconLabel.hide()
-            
+
         # Centre on screen
         screen = self.screen()
         if screen:
