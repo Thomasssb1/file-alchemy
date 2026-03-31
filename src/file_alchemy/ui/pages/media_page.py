@@ -288,7 +288,7 @@ class MediaPage(QWidget):
         if self._batch_total > 0:
             completed = self._batch_total - self._pending
             overall_pct = ((completed * 100) + pct) / self._batch_total
-            self._progress_bar.setValue(int(overall_pct))
+            self._progress_bar.setValue(int(min(100, overall_pct)))
 
     def _on_finished(self, output_path: Path) -> None:
         self._results_panel.add_success(
