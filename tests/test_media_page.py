@@ -399,26 +399,6 @@ def test_default_output_dir_is_none(page: MediaPage) -> None:
     assert page._output_dir is None
 
 
-def test_pick_output_dir_updates_label(page: MediaPage, tmp_path: Path) -> None:
-    with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getExistingDirectory",
-        return_value=str(tmp_path),
-    ):
-        page._pick_output_dir()
-
-    assert str(tmp_path) in page._output_dir_label.text()
-    assert page._output_dir == tmp_path
-
-
-def test_cancel_output_dir_dialog_keeps_none(page: MediaPage) -> None:
-    with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getExistingDirectory",
-        return_value="",
-    ):
-        page._pick_output_dir()
-    assert page._output_dir is None
-
-
 def test_resolve_output_path_uses_output_dir(page: MediaPage, tmp_path: Path) -> None:
     out_dir = tmp_path / "out"
     out_dir.mkdir()
@@ -446,22 +426,6 @@ def test_resolve_output_path_falls_back_to_input_dir(
 
 def test_progress_bar_hidden_initially(page: MediaPage) -> None:
     assert not page._progress_bar.isVisible()
-
-
-def test_on_progress_aggregates_total_batch(page: MediaPage) -> None:
-    """_on_progress calculates an aggregate percentage across the whole batch."""
-    page._batch_total = 2
-
-    page._pending = 2  # First file is running (0 completed)
-    page._on_progress(50.0)
-    assert page._progress_bar.value() == 25  # (0 + 50) / 2
-
-    page._pending = 1  # Second file is running (1 completed)
-    page._on_progress(50.0)
-    assert page._progress_bar.value() == 75  # (100 + 50) / 2
-
-    page._on_progress(100.0)
-    assert page._progress_bar.value() == 100  # (100 + 100) / 2
 
 
 def test_progress_bar_hidden_after_successful_conversion(
@@ -495,11 +459,13 @@ def test_progress_bar_hidden_after_error(page: MediaPage, tmp_path: Path) -> Non
     assert page._convert_btn.isEnabled()
 
 
-def test_infobar_error_shown_on_failure(page: MediaPage) -> None:
-    page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar") as mock:
+def test_on_error_uses_conversion_failed_title(page: MediaPage) -> None:
+    """The InfoBar title must identify 'Conversion failed', not the base generic."""
+    with patch("file_alchemy.ui.pages.base_page.InfoBar") as mock:
+        page._pending = 1
         page._on_error("FFmpeg not found on PATH")
-    mock.error.assert_called_once()
+    _, kwargs = mock.error.call_args
+    assert kwargs["title"] == "Conversion failed"
 
 
 def test_reset_after_batch_restores_button_and_hides_bar(

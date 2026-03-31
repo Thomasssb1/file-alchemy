@@ -483,76 +483,6 @@ def test_resolve_output_path_uses_output_dir(
 
 
 # --------------------------------------------------------------------------- #
-# Output directory picker
-# --------------------------------------------------------------------------- #
-
-
-def test_pick_output_dir_updates_label_and_state(
-    compression_page: CompressionPage, tmp_path: Path
-) -> None:
-    with patch(
-        "file_alchemy.ui.pages.compression_page.QFileDialog.getExistingDirectory",
-        return_value=str(tmp_path),
-    ):
-        compression_page._pick_output_dir()
-
-    assert compression_page._output_dir == tmp_path
-    assert str(tmp_path) in compression_page._output_dir_label.text()
-
-
-def test_cancel_output_dir_dialog_keeps_none(
-    compression_page: CompressionPage,
-) -> None:
-    with patch(
-        "file_alchemy.ui.pages.compression_page.QFileDialog.getExistingDirectory",
-        return_value="",
-    ):
-        compression_page._pick_output_dir()
-
-    assert compression_page._output_dir is None
-
-
-def test_change_output_dir_mid_session(
-    compression_page: CompressionPage, tmp_path: Path
-) -> None:
-    """Changing the output dir after files are loaded must update state and label."""
-    _add_files(compression_page, "audio.mp3", tmp_path=tmp_path)
-    first_dir = tmp_path / "first"
-    first_dir.mkdir()
-    second_dir = tmp_path / "second"
-    second_dir.mkdir()
-
-    with patch(
-        "file_alchemy.ui.pages.compression_page.QFileDialog.getExistingDirectory",
-        return_value=str(first_dir),
-    ):
-        compression_page._pick_output_dir()
-    assert compression_page._output_dir == first_dir
-
-    with patch(
-        "file_alchemy.ui.pages.compression_page.QFileDialog.getExistingDirectory",
-        return_value=str(second_dir),
-    ):
-        compression_page._pick_output_dir()
-    assert compression_page._output_dir == second_dir
-    assert str(second_dir) in compression_page._output_dir_label.text()
-
-
-def test_output_dir_used_in_resolve(
-    compression_page: CompressionPage, tmp_path: Path
-) -> None:
-    """After setting an output folder, resolved paths must sit inside it."""
-    out_dir = tmp_path / "output"
-    out_dir.mkdir()
-    compression_page._output_dir = out_dir
-
-    src = tmp_path / "clip.mp4"
-    src.touch()
-    result = compression_page._resolve_output_path(src)
-    assert result.parent == out_dir
-
-
-# --------------------------------------------------------------------------- #
 # Compression start / worker lifecycle
 # --------------------------------------------------------------------------- #
 
@@ -660,7 +590,7 @@ def test_error_in_queue_advances_to_next_file(
     _add_files(compression_page, "a.mp4", "b.mp3", tmp_path=tmp_path)
     compression_page._start_compression()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.base_page.InfoBar"):
         compression_page._on_error("FFmpeg died")
 
     # Worker 2 is created for b.mp3 despite the first error
@@ -677,7 +607,7 @@ def test_three_file_batch_all_errors_resets_ui(
     _add_files(compression_page, "a.mp4", "b.mp3", "c.png", tmp_path=tmp_path)
     compression_page._start_compression()
 
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.base_page.InfoBar"):
         compression_page._on_error("error 1")
         compression_page._on_error("error 2")
         compression_page._on_error("error 3")
@@ -701,40 +631,11 @@ def test_mixed_success_and_error_batch(
 
     with patch("file_alchemy.ui.pages.compression_page.InfoBar"):
         compression_page._on_finished(out, 1000, 800)
+
+    with patch("file_alchemy.ui.pages.base_page.InfoBar"):
         compression_page._on_error("codec not supported")
 
     assert compression_page._results_panel.count == 2
-
-
-# --------------------------------------------------------------------------- #
-# Progress bar
-# --------------------------------------------------------------------------- #
-
-
-def test_on_progress_aggregates_total_batch(
-    compression_page: CompressionPage,
-) -> None:
-    """_on_progress calculates an aggregate percentage across the whole batch."""
-    compression_page._batch_total = 2
-
-    compression_page._pending = 2  # first file running (0 completed)
-    compression_page._on_progress(50.0)
-    assert compression_page._progress_bar.value() == 25  # (0*100 + 50) / 2
-
-    compression_page._pending = 1  # second file running (1 completed)
-    compression_page._on_progress(50.0)
-    assert compression_page._progress_bar.value() == 75  # (1*100 + 50) / 2
-
-    compression_page._on_progress(100.0)
-    assert compression_page._progress_bar.value() == 100  # (1*100 + 100) / 2
-
-
-def test_on_progress_clamps_to_100(compression_page: CompressionPage) -> None:
-    """Progress must never exceed 100 even if an engine emits a value above it."""
-    compression_page._batch_total = 1
-    compression_page._pending = 1
-    compression_page._on_progress(150.0)
-    assert compression_page._progress_bar.value() == 100
 
 
 # --------------------------------------------------------------------------- #
@@ -833,28 +734,20 @@ def test_on_finished_infobar_is_closable(
 
 
 # --------------------------------------------------------------------------- #
-# _on_error
+# _on_error — page-specific title
 # --------------------------------------------------------------------------- #
 
 
-def test_on_error_shows_infobar_and_adds_to_results(
+def test_on_error_uses_compression_failed_title(
     compression_page: CompressionPage,
 ) -> None:
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
+    """The InfoBar title must identify 'Compression failed', not the base generic."""
+    with patch("file_alchemy.ui.pages.base_page.InfoBar") as mock_bar:
         compression_page._pending = 1
-        compression_page._on_error("ffmpeg not found")
-
-    mock_bar.error.assert_called_once()
-    assert compression_page._results_panel.count == 1
-
-
-def test_on_error_infobar_is_closable(compression_page: CompressionPage) -> None:
-    with patch("file_alchemy.ui.pages.compression_page.InfoBar") as mock_bar:
-        compression_page._pending = 1
-        compression_page._on_error("an error")
+        compression_page._on_error("codec error")
 
     _, kwargs = mock_bar.error.call_args
-    assert kwargs.get("isClosable") is True
+    assert kwargs["title"] == "Compression failed"
 
 
 # --------------------------------------------------------------------------- #
