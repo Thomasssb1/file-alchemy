@@ -11,6 +11,7 @@
 - [ ] **Niche 3D Asset Toolkit**: Implement custom pipelines to extract baked textures from `.GLTF` files or batch convert raw mesh topologies (e.g., FBX to OBJ).
 - [ ] **Advanced Video Trimming**: Give the user a timeline widget to rapidly split or extract segments from video files without re-encoding them (using `-c copy`).
 - [ ] **Audio Extraction**: Explicit one-click UI routes for tearing the audio track (MP3/WAV) off of a given video file.
+- [ ] **Image Manipulation**: Support basic image operations like cropping, resizing, and rotation.
 
 ### UI & Architecture Improvements
 

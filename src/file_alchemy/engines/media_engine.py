@@ -217,33 +217,42 @@ def convert_to_icon(
     input_path = Path(input_path)
     output_path = Path(output_path)
 
-    with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+    tmp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    tmp_path = Path(tmp_file.name)
+    tmp_file.close()
+
+    try:
         args = ["-vframes", "1"]
         if extra_args:
             args.extend(extra_args)
 
-        convert(input_path, tmp.name, args, progress_callback)
+        convert(input_path, tmp_path, args, progress_callback)
 
         try:
-            img = Image.open(tmp.name)
-            if img.mode != "RGBA":
-                img = img.convert("RGBA")
+            with Image.open(tmp_path) as img:
+                if img.mode != "RGBA":
+                    img = img.convert("RGBA")
 
-            # Ensure it is square to prevent icon aspect ratio distortion on some OS
-            size = min(img.size)
-            if img.size[0] != img.size[1]:
-                # Crop to center square
-                left = (img.size[0] - size) // 2
-                top = (img.size[1] - size) // 2
-                img = img.crop((left, top, left + size, top + size))
+                # Ensure it is square to prevent icon aspect ratio distortion on some OS
+                size = min(img.size)
+                if img.size[0] != img.size[1]:
+                    # Crop to center square
+                    left = (img.size[0] - size) // 2
+                    top = (img.size[1] - size) // 2
+                    img = img.crop((left, top, left + size, top + size))
 
-            fmt = "ICO" if output_path.suffix.lower() == ".ico" else "ICNS"
-            img.save(output_path, format=fmt)
+                fmt = "ICO" if output_path.suffix.lower() == ".ico" else "ICNS"
+                img.save(output_path, format=fmt)
         except Exception as e:
             raise MediaConversionError(
                 f"Failed to generate {output_path.suffix.upper()} using Pillow",
                 stderr=str(e),
             ) from e
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     return output_path.resolve()
 

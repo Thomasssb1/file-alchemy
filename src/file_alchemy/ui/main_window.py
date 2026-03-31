@@ -42,8 +42,8 @@ class MainWindow(FluentWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self._setup_window()
         self._setup_navigation()
+        self._setup_window()
 
     def _set_icon(self) -> None:
         try:
@@ -62,15 +62,24 @@ class MainWindow(FluentWindow):
         # Move window control buttons to the top-left on macOS and Linux.
         # macOS style: [Close] [Min] [Max] ... [Title]
         if sys.platform in ("darwin", "linux"):
-            self.titleBar.hBoxLayout.removeWidget(self.titleBar.minBtn)
-            self.titleBar.hBoxLayout.removeWidget(self.titleBar.maxBtn)
-            self.titleBar.hBoxLayout.removeWidget(self.titleBar.closeBtn)
+            layout = self.titleBar.hBoxLayout
+            layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            
+            # More robust removal
+            layout.removeWidget(self.titleBar.minBtn)
+            layout.removeWidget(self.titleBar.maxBtn)
+            layout.removeWidget(self.titleBar.closeBtn)
 
-            self.titleBar.hBoxLayout.insertWidget(0, self.titleBar.closeBtn, 0, Qt.AlignmentFlag.AlignLeft)
-            self.titleBar.hBoxLayout.insertWidget(1, self.titleBar.minBtn, 0, Qt.AlignmentFlag.AlignLeft)
-            self.titleBar.hBoxLayout.insertWidget(2, self.titleBar.maxBtn, 0, Qt.AlignmentFlag.AlignLeft)
-            self.titleBar.hBoxLayout.insertSpacing(3, 12)
+            # Insert buttons at the beginning (Close, Min, Max)
+            layout.insertWidget(0, self.titleBar.closeBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            layout.insertWidget(1, self.titleBar.minBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            layout.insertWidget(2, self.titleBar.maxBtn, 0, Qt.AlignmentFlag.AlignLeft)
+            layout.insertSpacing(3, 10)
 
+            # macOS doesn't typically show an icon in the title bar
+            if sys.platform == "darwin" and hasattr(self.titleBar, "iconLabel"):
+                self.titleBar.iconLabel.hide()
+            
         # Centre on screen
         screen = self.screen()
         if screen:

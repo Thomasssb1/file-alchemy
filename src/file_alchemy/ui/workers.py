@@ -50,6 +50,8 @@ class ConversionWorker(QThread):
                 progress_callback=self.progress.emit,
             )
             self.finished.emit(result)
+        except MediaConversionError as exc:
+            self.error.emit(str(exc))
         except Exception as exc:
             self.error.emit(f"Unexpected error: {exc}")
 
