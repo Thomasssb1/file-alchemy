@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from collections import deque
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
     QSpinBox,
@@ -34,6 +32,7 @@ from file_alchemy.engines.compression_options import (
     ext_category,
 )
 from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
+from file_alchemy.ui.pages.base_page import BaseBatchPage
 from file_alchemy.ui.workers import CompressionWorker
 
 
@@ -48,17 +47,14 @@ def _format_size(size_bytes: int) -> str:
     return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
 
-class CompressionPage(QWidget):
+class CompressionPage(BaseBatchPage):
     """File Compression page for lossless, lossy, and target-size reduction."""
+
+    _error_title = "Compression failed"
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("CompressionPage")
-        self._current_worker: CompressionWorker | None = None
-        self._queue: deque[Path] = deque()
-        self._output_dir: Path | None = None
-        self._pending: int = 0
-        self._batch_total: int = 0
 
         self._setup_ui()
         self._update_controls_visibility()
@@ -207,12 +203,6 @@ class CompressionPage(QWidget):
         self._compress_btn.setEnabled(self._file_panel.count > 0)
         self._update_estimated_size()
 
-    def _pick_output_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Choose output folder")
-        if directory:
-            self._output_dir = Path(directory)
-            self._output_dir_label.setText(f"Output: {self._output_dir}")
-
     def _get_current_options(self) -> CompressionOptions:
         if self._radio_target.isChecked():
             mode = CompressionMode.TARGET_SIZE
@@ -296,12 +286,6 @@ class CompressionPage(QWidget):
         self._current_worker.error.connect(self._on_error)
         self._current_worker.start()
 
-    def _on_progress(self, pct: float) -> None:
-        if self._batch_total > 0:
-            completed = self._batch_total - self._pending
-            overall_pct = ((completed * 100) + pct) / self._batch_total
-            self._progress_bar.setValue(int(min(100, overall_pct)))
-
     def _on_finished(self, output_path: Path, original: int, final: int) -> None:
         name = output_path.name
         o_str = _format_size(original)
@@ -336,31 +320,5 @@ class CompressionPage(QWidget):
         )
         self._complete_one()
 
-    def _on_error(self, message: str) -> None:
-        InfoBar.error(
-            title="Compression failed",
-            content=message,
-            orient=Qt.Orientation.Horizontal,
-            isClosable=True,
-            position=InfoBarPosition.BOTTOM_RIGHT,
-            duration=6000,
-            parent=self,
-        )
-        self._results_panel.add_error(message)
-        self._complete_one()
-
-    def _complete_one(self) -> None:
-        if self._current_worker:
-            self._current_worker.deleteLater()
-            self._current_worker = None
-
-        self._pending -= 1
-        if self._pending <= 0:
-            self._reset_after_batch()
-        else:
-            self._run_next_in_queue()
-
-    def _reset_after_batch(self) -> None:
-        self._progress_bar.setVisible(False)
-        self._progress_bar.setValue(0)
+    def _restore_action_button(self) -> None:
         self._compress_btn.setEnabled(self._file_panel.count > 0)

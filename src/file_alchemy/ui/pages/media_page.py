@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from collections import deque
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
     QVBoxLayout,
@@ -28,14 +26,14 @@ from qfluentwidgets import (
 
 from file_alchemy.engines.registry import (
     DEFAULT_REGISTRY,
-    ConversionRoute,
     _category_of,
 )
 from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
+from file_alchemy.ui.pages.base_page import BaseBatchPage
 from file_alchemy.ui.workers import ConversionWorker
 
 
-class MediaPage(QWidget):
+class MediaPage(BaseBatchPage):
     """Media conversion page with batch file selection and format picker.
 
     Features:
@@ -45,14 +43,11 @@ class MediaPage(QWidget):
     - Success/error InfoBar notifications
     """
 
+    _error_title = "Conversion failed"
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MediaPage")
-        self._current_worker: ConversionWorker | None = None
-        self._queue: deque[tuple[Path, Path, ConversionRoute]] = deque()
-        self._output_dir: Path | None = None
-        self._pending: int = 0
-        self._batch_total: int = 0
         self._setup_ui()
 
     # ------------------------------------------------------------------ #
@@ -226,12 +221,6 @@ class MediaPage(QWidget):
     # Output directory
     # ------------------------------------------------------------------ #
 
-    def _pick_output_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Choose output folder")
-        if directory:
-            self._output_dir = Path(directory)
-            self._output_dir_label.setText(f"Output: {self._output_dir}")
-
     def _resolve_output_path(self, input_path: Path, out_ext: str) -> Path:
         base = self._output_dir or input_path.parent
         return base / f"{input_path.stem}.{out_ext}"
@@ -284,12 +273,6 @@ class MediaPage(QWidget):
         self._current_worker.error.connect(self._on_error)
         self._current_worker.start()
 
-    def _on_progress(self, pct: float) -> None:
-        if self._batch_total > 0:
-            completed = self._batch_total - self._pending
-            overall_pct = ((completed * 100) + pct) / self._batch_total
-            self._progress_bar.setValue(int(min(100, overall_pct)))
-
     def _on_finished(self, output_path: Path) -> None:
         self._results_panel.add_success(
             output_path.name, folder_path=output_path.parent
@@ -306,26 +289,10 @@ class MediaPage(QWidget):
         )
         self._complete_one()
 
-    def _on_error(self, message: str) -> None:
-        self._results_panel.add_error(message)
-        self._show_error(message)
-        self._complete_one()
-
-    def _complete_one(self) -> None:
-        """Decrement the pending counter and run next or reset UI."""
-        if self._current_worker:
-            self._current_worker.deleteLater()
-            self._current_worker = None
-
-        self._pending -= 1
-        if self._pending <= 0:
-            self._reset_after_batch()
-        else:
-            self._run_next_in_queue()
-
     def _show_error(self, message: str) -> None:
+        """Display an error InfoBar without a results entry (used for skipped files)."""
         InfoBar.error(
-            title="Conversion failed",
+            title=self._error_title,
             content=message,
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
@@ -334,9 +301,7 @@ class MediaPage(QWidget):
             parent=self,
         )
 
-    def _reset_after_batch(self) -> None:
-        self._progress_bar.setVisible(False)
-        self._progress_bar.setValue(0)
+    def _restore_action_button(self) -> None:
         out_ext = self._format_combo.currentText()
         has_valid_ext = bool(out_ext and not out_ext.startswith("──"))
         self._convert_btn.setEnabled(self._file_panel.count > 0 and has_valid_ext)
