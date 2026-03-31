@@ -104,10 +104,13 @@ def compress_image(
     fmt = _resolve_format(output_ext)
 
     try:
-        img = Image.open(input_path)
-        # Ensure RGB for JPEG (which cannot handle alpha in compression)
-        if fmt == "JPEG" and img.mode in {"RGBA", "P", "LA"}:
-            img = img.convert("RGB")
+        with Image.open(input_path) as opened_img:
+            # Ensure RGB for JPEG (which cannot handle alpha in compression)
+            if fmt == "JPEG" and opened_img.mode in {"RGBA", "P", "LA"}:
+                img = opened_img.convert("RGB")
+            else:
+                # Ensure we hold an in-memory copy after the file is closed
+                img = opened_img.copy()
     except Exception as exc:
         raise MediaConversionError(
             f"Failed to open image: {input_path}", stderr=str(exc)

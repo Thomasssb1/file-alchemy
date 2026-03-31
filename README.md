@@ -68,5 +68,5 @@ Run this command from the root of the project:
 .venv/bin/pyinstaller "file_alchemy.spec"
 ```
 
-- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy.app/` folder (on macOS) or `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy.app/Contents/MacOS/File Alchemy` or `dist/File Alchemy/File Alchemy`.
+- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The exact executable name and layout may vary by platform and your PyInstaller configuration (for example, you may get a `.exe` on Windows).
 - You can safely delete the `build/` folder that generates during the process.
