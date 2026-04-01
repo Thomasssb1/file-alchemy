@@ -141,12 +141,30 @@ class TestEstimateSize:
 
     def test_returns_quality_ratio_for_lossy(self, tmp_path) -> None:
         f = tmp_path / "in.mp4"
-        f.write_text("x" * 100)
-        opts = CompressionOptions(
-            CompressionMode.LOSSY, quality=50
-        )  # 0.1 + 0.9*0.5 = 0.55
-        est = opts.estimate_size(f)
-        assert est == 55
+        f.write_bytes(b"x" * 100)
+        # Quadratic formula: (64/100)^2 = 0.4096 → 40 bytes for 100-byte input
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=64)
+        assert opts.estimate_size(f) == 40
+
+    def test_lossy_quality_100_returns_full_size(self, tmp_path) -> None:
+        f = tmp_path / "in.mp4"
+        f.write_bytes(b"x" * 1000)
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=100)
+        assert opts.estimate_size(f) == 1000
+
+    def test_lossy_quality_50_is_quarter_of_input(self, tmp_path) -> None:
+        f = tmp_path / "in.mp4"
+        f.write_bytes(b"x" * 1000)
+        # (50/100)^2 = 0.25
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=50)
+        assert opts.estimate_size(f) == 250
+
+    def test_lossy_quality_1_returns_at_least_1_byte(self, tmp_path) -> None:
+        """Floor guard: extremely low quality must never produce a 0-byte estimate."""
+        f = tmp_path / "in.mp4"
+        f.write_bytes(b"x")  # 1-byte file
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=1)
+        assert opts.estimate_size(f) >= 1
 
     def test_missing_file_returns_none(self) -> None:
         opts = CompressionOptions(CompressionMode.LOSSLESS)

@@ -12,6 +12,7 @@ from PyQt6.QtGui import QDropEvent
 from file_alchemy.engines.compression.compression_mode import CompressionMode
 from file_alchemy.ui.pages.compression.compression_page import (
     CompressionPage,
+    _ALWAYS_LOSSLESS_EXTS,
     _format_size,
 )
 
@@ -519,6 +520,140 @@ def test_progress_bar_shown_when_compression_starts(
 
 
 # --------------------------------------------------------------------------- #
+# Options snapshot — settings captured at batch-start
+# --------------------------------------------------------------------------- #
+
+
+def test_worker_receives_lossless_options_when_lossless_selected(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """CompressionWorker must be constructed with LOSSLESS options when that mode is active."""
+    _add_files(compression_page, "video.mp4", tmp_path=tmp_path)
+    compression_page._radio_lossless.setChecked(True)
+
+    compression_page._start_compression()
+
+    options = mock_compression_worker.call_args[0][2]
+    assert options.mode == CompressionMode.LOSSLESS
+
+
+def test_worker_receives_lossy_options_when_lossy_selected(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """CompressionWorker must be constructed with LOSSY options and the correct quality."""
+    _add_files(compression_page, "photo.jpg", tmp_path=tmp_path)
+    compression_page._radio_lossy.setChecked(True)
+    compression_page._quality_slider.setValue(25)
+
+    compression_page._start_compression()
+
+    options = mock_compression_worker.call_args[0][2]
+    assert options.mode == CompressionMode.LOSSY
+    assert options.quality == 25
+
+
+def test_second_run_uses_updated_mode(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """A second compression run after changing the mode must use the NEW mode, not the old one.
+
+    Regression test: previously _run_next_in_queue read options lazily, making
+    it possible for cached state to bleed across batch runs.
+    """
+    _add_files(compression_page, "video.mp4", tmp_path=tmp_path)
+    out = tmp_path / "video_compressed.mp4"
+    out.touch()
+
+    # First run: lossless
+    compression_page._radio_lossless.setChecked(True)
+    compression_page._start_compression()
+
+    first_options = mock_compression_worker.call_args[0][2]
+    assert first_options.mode == CompressionMode.LOSSLESS
+
+    # Simulate first batch finishing
+    with patch("file_alchemy.ui.pages.compression.compression_page.InfoBar"):
+        compression_page._on_finished(out, 1000, 900)
+
+    # Change mode to lossy before second run
+    compression_page._radio_lossy.setChecked(True)
+    compression_page._quality_slider.setValue(25)
+
+    compression_page._start_compression()
+
+    # Second worker should use the new lossy options
+    second_options = mock_compression_worker.call_args[0][2]
+    assert second_options.mode == CompressionMode.LOSSY
+    assert second_options.quality == 25
+
+
+def test_second_run_uses_updated_target_size(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """Switching from lossless to target-size between runs must apply the new mode."""
+    _add_files(compression_page, "audio.mp3", tmp_path=tmp_path)
+    out = tmp_path / "audio_compressed.mp3"
+    out.touch()
+
+    compression_page._radio_lossless.setChecked(True)
+    compression_page._start_compression()
+
+    with patch("file_alchemy.ui.pages.compression.compression_page.InfoBar"):
+        compression_page._on_finished(out, 5000, 4800)
+
+    compression_page._radio_target.setChecked(True)
+    compression_page._target_spinbox.setValue(2)
+    compression_page._target_unit.setCurrentIndex(1)  # MB
+
+    compression_page._start_compression()
+
+    second_options = mock_compression_worker.call_args[0][2]
+    assert second_options.mode == CompressionMode.TARGET_SIZE
+    assert second_options.target_bytes == 2 * 1024 * 1024
+
+
+def test_options_snapshot_not_affected_by_mid_batch_ui_change(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """Changing mode controls while a multi-file batch is running must not affect queued files.
+
+    All files in a batch must use the options captured at batch-start, even if
+    the user toggles controls while the first file is being processed.
+    """
+    _add_files(compression_page, "a.mp4", "b.mp3", tmp_path=tmp_path)
+    out_a = tmp_path / "a_compressed.mp4"
+    out_a.touch()
+
+    compression_page._radio_lossless.setChecked(True)
+    compression_page._start_compression()
+
+    first_options = mock_compression_worker.call_args[0][2]
+    assert first_options.mode == CompressionMode.LOSSLESS
+
+    # User changes mode mid-batch while file A is being processed
+    compression_page._radio_lossy.setChecked(True)
+    compression_page._quality_slider.setValue(10)
+
+    # Simulate file A completing — should trigger file B with the ORIGINAL options
+    with patch("file_alchemy.ui.pages.compression.compression_page.InfoBar"):
+        compression_page._on_finished(out_a, 1000, 900)
+
+    # File B must still use the lossless options snapshotted at batch-start
+    second_call_options = mock_compression_worker.call_args[0][2]
+    assert second_call_options.mode == CompressionMode.LOSSLESS
+
+
+# --------------------------------------------------------------------------- #
 # Queuing system — multiple files
 # --------------------------------------------------------------------------- #
 
@@ -836,3 +971,101 @@ def test_estimated_size_lossy_has_approximation_prefix(
 
     compression_page._radio_lossy.setChecked(True)
     assert "≈" in compression_page._estimate_label.text()
+
+
+# --------------------------------------------------------------------------- #
+# Format-note label — lossless-only format warning
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("ext", sorted(_ALWAYS_LOSSLESS_EXTS))
+def test_format_note_hidden_in_lossless_mode(
+    compression_page: CompressionPage, tmp_path: Path, ext: str
+) -> None:
+    """No note shown when lossless mode is already selected — redundant to warn."""
+    f = tmp_path / f"image.{ext}"
+    f.write_bytes(b"x" * 500)
+    compression_page._on_files_added([f])
+
+    compression_page._radio_lossless.setChecked(True)
+
+    assert not compression_page._format_note_label.isVisible()
+
+
+@pytest.mark.parametrize("ext", sorted(_ALWAYS_LOSSLESS_EXTS))
+def test_format_note_shown_for_always_lossless_format_in_lossy_mode(
+    compression_page: CompressionPage, tmp_path: Path, ext: str
+) -> None:
+    """Note label must appear when an inherently lossless file is selected in LOSSY mode."""
+    f = tmp_path / f"image.{ext}"
+    f.write_bytes(b"x" * 500)
+    compression_page._on_files_added([f])
+
+    compression_page._radio_lossy.setChecked(True)
+
+    assert compression_page._format_note_label.isVisible()
+    assert ext.upper() in compression_page._format_note_label.text()
+
+
+@pytest.mark.parametrize("ext", sorted(_ALWAYS_LOSSLESS_EXTS))
+def test_format_note_shown_for_always_lossless_format_in_target_mode(
+    compression_page: CompressionPage, tmp_path: Path, ext: str
+) -> None:
+    """Note label must appear when an inherently lossless file is selected in TARGET SIZE mode."""
+    f = tmp_path / f"image.{ext}"
+    f.write_bytes(b"x" * 500)
+    compression_page._on_files_added([f])
+
+    compression_page._radio_target.setChecked(True)
+
+    assert compression_page._format_note_label.isVisible()
+
+
+def test_format_note_hidden_for_lossy_capable_jpg(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    """JPEG supports lossy compression — no note should appear in LOSSY mode."""
+    f = tmp_path / "photo.jpg"
+    f.write_bytes(b"x" * 5000)
+    compression_page._on_files_added([f])
+
+    compression_page._radio_lossy.setChecked(True)
+
+    assert not compression_page._format_note_label.isVisible()
+
+
+def test_format_note_hidden_for_lossy_capable_webp(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    """WebP supports lossy compression — no note should appear in LOSSY mode."""
+    f = tmp_path / "image.webp"
+    f.write_bytes(b"x" * 5000)
+    compression_page._on_files_added([f])
+
+    compression_page._radio_lossy.setChecked(True)
+
+    assert not compression_page._format_note_label.isVisible()
+
+
+def test_format_note_hidden_when_no_files(
+    compression_page: CompressionPage,
+) -> None:
+    """Note must never appear when the file panel is empty."""
+    compression_page._radio_lossy.setChecked(True)
+    assert not compression_page._format_note_label.isVisible()
+
+
+def test_format_note_hidden_after_clearing_files(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    """Note must disappear when the file list is cleared."""
+    f = tmp_path / "image.png"
+    f.write_bytes(b"x" * 500)
+    compression_page._on_files_added([f])
+    compression_page._radio_lossy.setChecked(True)
+
+    assert compression_page._format_note_label.isVisible()
+
+    compression_page._file_panel.clear()
+
+    assert not compression_page._format_note_label.isVisible()

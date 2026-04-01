@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from file_alchemy.engines.compression.compression_mode import CompressionMode
 from file_alchemy.engines.compression.compression_options import CompressionOptions
 from file_alchemy.engines.image_engine import compress_image
 from file_alchemy.engines.media_engine import compress_media
@@ -60,6 +62,15 @@ class CompressionWorker(QThread):
                 )
 
             output_bytes = result.stat().st_size
+
+            # If the re-encode produced a larger file, fall back to a verbatim
+            # copy of the original
+            if (
+                self._options.mode is CompressionMode.LOSSLESS
+                and output_bytes > original_bytes
+            ):
+                shutil.copy2(self._input_path, result)
+
             self.finished.emit(result, original_bytes, output_bytes)
         except MediaConversionError as exc:
             self.error.emit(str(exc))

@@ -252,7 +252,6 @@ class CompressionOptions:
         if self.mode is CompressionMode.LOSSLESS:
             return original_bytes
 
-        # LOSSY: scale proportionally to quality.
-        # At quality=100, expect ~same size; at quality=1, expect ~10% of original.
-        ratio = 0.1 + 0.9 * (self.quality / 100)
-        return int(original_bytes * ratio)
+        # LOSSY: approximate output size using a quadratic quality curve.
+        ratio = (self.quality / 100) ** 2
+        return max(1, int(original_bytes * ratio))
