@@ -35,11 +35,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if ! git merge-base --is-ancestor "${{ github.sha }}" HEAD; then
-            echo "Skipping update: Tag commit (${{ github.sha }}) is not an ancestor of main ($(git rev-parse HEAD))."
-            exit 0
-          fi
-          
           if [ -f coverage.json ]; then
             # Extract coverage percentage from coverage.json
             COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
