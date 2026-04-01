@@ -11,6 +11,7 @@ from file_alchemy.ui.pages.compression.compression_worker import CompressionWork
 from file_alchemy.ui.pages.media.conversion_worker import ConversionWorker
 from tests.conftest import skip_no_ffmpeg
 
+
 @skip_no_ffmpeg
 def test_conversion_worker_wav_to_mp3(sample_wav: Path, tmp_path: Path) -> None:
     """ConversionWorker produces a real MP3 file using the real FFmpeg engine."""
@@ -24,6 +25,7 @@ def test_conversion_worker_wav_to_mp3(sample_wav: Path, tmp_path: Path) -> None:
     assert out.exists()
     assert out.suffix == ".mp3"
     assert out.stat().st_size > 0
+
 
 @skip_no_ffmpeg
 def test_conversion_worker_mp4_to_gif(sample_mp4: Path, tmp_path: Path) -> None:
@@ -39,6 +41,7 @@ def test_conversion_worker_mp4_to_gif(sample_mp4: Path, tmp_path: Path) -> None:
     assert out.suffix == ".gif"
     assert out.stat().st_size > 0
 
+
 @skip_no_ffmpeg
 def test_conversion_worker_png_to_ico(sample_png: Path, tmp_path: Path) -> None:
     """ConversionWorker converts PNG to ICO using convert_to_icon engine."""
@@ -52,6 +55,7 @@ def test_conversion_worker_png_to_ico(sample_png: Path, tmp_path: Path) -> None:
     assert out.exists()
     assert out.suffix == ".ico"
     assert out.stat().st_size > 0
+
 
 @skip_no_ffmpeg
 def test_conversion_worker_png_to_jpg(sample_png: Path, tmp_path: Path) -> None:
@@ -67,6 +71,7 @@ def test_conversion_worker_png_to_jpg(sample_png: Path, tmp_path: Path) -> None:
     assert out.suffix == ".jpg"
     assert out.stat().st_size > 0
 
+
 def test_compression_worker_real_pillow(sample_png: Path, tmp_path: Path) -> None:
     """CompressionWorker produces a real compressed PNG using the real Pillow engine."""
     out = tmp_path / "out_compressed.png"
@@ -78,6 +83,7 @@ def test_compression_worker_real_pillow(sample_png: Path, tmp_path: Path) -> Non
     assert out.exists()
     assert out.stat().st_size > 0
     assert out.stat().st_size <= sample_png.stat().st_size
+
 
 @skip_no_ffmpeg
 def test_compression_worker_real_ffmpeg_media(sample_wav: Path, tmp_path: Path) -> None:

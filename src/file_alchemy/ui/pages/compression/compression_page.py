@@ -367,7 +367,9 @@ class CompressionPage(BaseBatchPage):
             list_msg = f"{name}:  {o_str} → {o_str}  (Ineffective, kept original)"
         else:
             msg = f"Saved: {name} — {o_str} → {f_str} ({display_pct:.1f}% {arrow})"
-            list_msg = f"{name}:  {o_str} → {f_str}  ({display_pct:.1f}% {arrow}{suffix})"
+            list_msg = (
+                f"{name}:  {o_str} → {f_str}  ({display_pct:.1f}% {arrow}{suffix})"
+            )
 
         if grew:
             self._results_panel.add_warning(list_msg, folder_path=output_path.parent)

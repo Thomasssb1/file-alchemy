@@ -67,9 +67,7 @@ class MainWindow(FluentWindow):
             return
 
         layout = self.titleBar.hBoxLayout
-        layout.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+        layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         # Remove from current layout (buttonLayout) to ensure they can be moved to hBoxLayout
         self.titleBar.buttonLayout.removeWidget(self.titleBar.minBtn)

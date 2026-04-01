@@ -28,7 +28,9 @@ def test_media_conversion_e2e(qtbot: QtBot, sample_wav: Path, tmp_path: Path) ->
 
     # Ensure the format combo is populated and select 'mp3'
     index = page._format_combo.findText("mp3")
-    assert index >= 0, f"MP3 format not found in combo box. Items: {[page._format_combo.itemText(i) for i in range(page._format_combo.count())]}"
+    assert index >= 0, (
+        f"MP3 format not found in combo box. Items: {[page._format_combo.itemText(i) for i in range(page._format_combo.count())]}"
+    )
     page._format_combo.setCurrentIndex(index)
 
     # The convert button should now be enabled
@@ -42,7 +44,9 @@ def test_media_conversion_e2e(qtbot: QtBot, sample_wav: Path, tmp_path: Path) ->
 
     # Verify the output file exists in the temp directory
     expected_output = tmp_path / f"{sample_wav.stem}.mp3"
-    assert expected_output.exists(), f"Expected output {expected_output} was not created."
+    assert expected_output.exists(), (
+        f"Expected output {expected_output} was not created."
+    )
     assert expected_output.stat().st_size > 0
 
 
@@ -73,6 +77,8 @@ def test_image_compression_e2e(qtbot: QtBot, sample_png: Path, tmp_path: Path) -
 
     # Verify the output file (CompressionPage uses {stem}_compressed{suffix})
     expected_output = tmp_path / f"{sample_png.stem}_compressed{sample_png.suffix}"
-    assert expected_output.exists(), f"Expected output {expected_output} was not created."
+    assert expected_output.exists(), (
+        f"Expected output {expected_output} was not created."
+    )
     # Lossy compression should ideally result in a non-zero file
     assert expected_output.stat().st_size > 0
