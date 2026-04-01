@@ -3,6 +3,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,10 +13,8 @@ from pytestqt.qtbot import QtBot
 from file_alchemy.engines import media_engine
 from file_alchemy.engines.registry import ConversionRegistry
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from file_alchemy.ui.components import ResultsPanel, DropZone, FileListPanel
+    from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
     from file_alchemy.ui.pages.compression.compression_page import CompressionPage
 
 # Use Qt's offscreen platform when no display is available (CI / headless).

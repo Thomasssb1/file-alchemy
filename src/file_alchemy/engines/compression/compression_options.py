@@ -61,6 +61,7 @@ class CompressionOptions:
         mode:         The compression strategy.
         quality:      User-facing quality level (1–100). Only used for LOSSY.
         target_bytes: Desired output file size in bytes. Only used for TARGET_SIZE.
+
     """
 
     mode: CompressionMode
@@ -83,6 +84,7 @@ class CompressionOptions:
 
         Returns:
             A list of FFmpeg CLI flags (e.g. ``["-crf", "0"]``).
+
         """
         category = ext_category(output_ext)
 
@@ -170,6 +172,7 @@ class CompressionOptions:
 
         Returns:
             Keyword arguments dict for ``Image.save()``.
+
         """
         ext = output_ext.lower().lstrip(".")
 

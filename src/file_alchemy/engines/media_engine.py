@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import json
+import platform
 import re
 import shutil
 import subprocess
-import platform
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from file_alchemy.errors.ffmpeg_not_found_error import FFmpegNotFoundError
 from file_alchemy.errors.media_conversion_error import MediaConversionError
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from file_alchemy.engines.compression.compression_options import CompressionOptions
@@ -43,6 +42,7 @@ def probe(path: str | Path) -> dict:
     Raises:
         FFmpegNotFoundError: If ffprobe is not on PATH.
         MediaConversionError: If ffprobe fails to parse the file or exits with an error.
+
     """
     _, ffprobe_bin = _require_ffmpeg()
     try:
@@ -166,6 +166,7 @@ def convert(
     Raises:
         FFmpegNotFoundError: If ffmpeg is not on PATH.
         MediaConversionError: If FFmpeg exits with a non-zero status.
+
     """
     ffmpeg_bin, _ = _require_ffmpeg()
     input_path = Path(input_path)
@@ -211,6 +212,7 @@ def convert_to_icon(
        the multiple resolution layers required by the .ico and .icns container formats.
     """
     import tempfile
+
     from PIL import Image
 
     input_path = Path(input_path)
@@ -285,6 +287,7 @@ def convert_two_pass(
     Raises:
         FFmpegNotFoundError: If ffmpeg is not on PATH.
         MediaConversionError: If either pass fails.
+
     """
     ffmpeg_bin, _ = _require_ffmpeg()
     input_path = Path(input_path)
@@ -358,7 +361,7 @@ def convert_two_pass(
 def compress_media(
     input_path: str | Path,
     output_path: str | Path,
-    options: "CompressionOptions",
+    options: CompressionOptions,
     progress_callback: Callable[[float], None] | None = None,
 ) -> Path:
     """Compress video or audio by calculating ffmpeg arguments via options."""

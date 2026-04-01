@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from PyQt6.QtCore import QMimeData, QUrl, Qt
+from PyQt6.QtCore import QMimeData, Qt, QUrl
 from pytestqt.qtbot import QtBot
 
 from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel

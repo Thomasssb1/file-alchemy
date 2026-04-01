@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-
 from file_alchemy.engines.compression.compression_mode import CompressionMode
 from file_alchemy.engines.compression.compression_options import (
     CompressionOptions,
-    _quality_to_crf,
     _quality_to_audio_bitrate,
+    _quality_to_crf,
     ext_category,
 )
 

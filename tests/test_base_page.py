@@ -8,11 +8,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PyQt6.QtWidgets import QLabel, QVBoxLayout
 from pytestqt.qtbot import QtBot
+from qfluentwidgets import ProgressBar
 
 from file_alchemy.ui.components import FileListPanel, ResultsPanel
 from file_alchemy.ui.pages.base_page import BaseBatchPage
-from qfluentwidgets import ProgressBar
-
 
 # --------------------------------------------------------------------------- #
 # Stub concrete implementation

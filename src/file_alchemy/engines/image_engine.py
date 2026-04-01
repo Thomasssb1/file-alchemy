@@ -37,6 +37,7 @@ def _resolve_format(output_ext: str) -> str:
 
     Raises:
         MediaConversionError: If the format is unknown to our mapping.
+
     """
     fmt = _EXT_TO_FORMAT.get(output_ext.lower().lstrip("."))
     if not fmt:
@@ -98,6 +99,7 @@ def compress_image(
 
     Raises:
         MediaConversionError: If the format is unsupported or Pillow fails.
+
     """
     input_path = Path(input_path)
     output_path = Path(output_path)

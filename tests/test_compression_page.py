@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PyQt6.QtCore import QMimeData, QPointF, QUrl, Qt
+from PyQt6.QtCore import QMimeData, QPointF, Qt, QUrl
 from PyQt6.QtGui import QDropEvent
 
 from file_alchemy.engines.compression.compression_mode import CompressionMode
@@ -14,7 +14,6 @@ from file_alchemy.ui.pages.compression.compression_page import (
     CompressionPage,
     _format_size,
 )
-
 
 # --------------------------------------------------------------------------- #
 # Helpers
