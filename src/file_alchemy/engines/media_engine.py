@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import json
+import platform
 import re
 import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from file_alchemy.errors.ffmpeg_not_found_error import FFmpegNotFoundError
 from file_alchemy.errors.media_conversion_error import MediaConversionError
+
+if TYPE_CHECKING:
+    from file_alchemy.engines.compression.compression_options import CompressionOptions
 
 
 def _require_ffmpeg() -> tuple[str, str]:
@@ -37,6 +42,7 @@ def probe(path: str | Path) -> dict:
     Raises:
         FFmpegNotFoundError: If ffprobe is not on PATH.
         MediaConversionError: If ffprobe fails to parse the file or exits with an error.
+
     """
     _, ffprobe_bin = _require_ffmpeg()
     try:
@@ -84,18 +90,57 @@ def _parse_progress(
     line: str,
     duration_seconds: float,
     progress_callback: Callable[[float], None],
+    offset: float = 0.0,
+    scale: float = 100.0,
 ) -> None:
-    """Update caller with 0-100 progress if *line* contains a ``time=`` token."""
+    """Update caller with scaled progress if *line* contains a ``time=`` token.
+
+    Progress is calculated as ``offset + (elapsed / duration * scale)``,
+    capped at ``offset + scale``.
+    """
     match = _TIME_RE.search(line)
     if match and duration_seconds > 0:
         elapsed = _parse_seconds(*match.groups())
-        pct = min(elapsed / duration_seconds * 100, 100.0)
-        progress_callback(pct)
+        pct = min(elapsed / duration_seconds * scale, scale)
+        progress_callback(offset + pct)
 
 
 # --------------------------------------------------------------------------- #
 # Conversion
 # --------------------------------------------------------------------------- #
+
+
+def _execute_ffmpeg(
+    cmd: list[str],
+    duration_seconds: float,
+    progress_callback: Callable[[float], None] | None,
+    error_prefix: str = "FFmpeg conversion failed",
+    offset: float = 0.0,
+    scale: float = 100.0,
+) -> None:
+    """Execute FFmpeg command, parse progress, and handle errors."""
+    process = subprocess.Popen(
+        cmd,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+    stderr_lines: list[str] = []
+    assert process.stderr is not None
+    for line in process.stderr:
+        stderr_lines.append(line)
+        if progress_callback:
+            _parse_progress(line, duration_seconds, progress_callback, offset, scale)
+
+    process.wait()
+    if process.returncode != 0:
+        err_out = "".join(stderr_lines)
+        raise MediaConversionError(
+            f"{error_prefix} with code {process.returncode}",
+            stderr=err_out,
+        )
 
 
 def convert(
@@ -121,6 +166,7 @@ def convert(
     Raises:
         FFmpegNotFoundError: If ffmpeg is not on PATH.
         MediaConversionError: If FFmpeg exits with a non-zero status.
+
     """
     ffmpeg_bin, _ = _require_ffmpeg()
     input_path = Path(input_path)
@@ -146,27 +192,201 @@ def convert(
         str(output_path),
     ]
 
-    process = subprocess.Popen(
-        cmd,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    _execute_ffmpeg(cmd, duration_seconds, progress_callback)
+    return output_path.resolve()
 
-    stderr_lines: list[str] = []
-    assert process.stderr is not None
-    for line in process.stderr:
-        stderr_lines.append(line)
-        if progress_callback:
-            _parse_progress(line, duration_seconds, progress_callback)
 
-    process.wait()
-    if process.returncode != 0:
-        err_out = "".join(stderr_lines)
-        raise MediaConversionError(
-            f"FFmpeg conversion failed with code {process.returncode}",
-            stderr=err_out,
-        )
+def convert_to_icon(
+    input_path: str | Path,
+    output_path: str | Path,
+    extra_args: list[str] | None = None,
+    progress_callback: Callable[[float], None] | None = None,
+) -> Path:
+    """Convert an image or video to an ICO or ICNS file using Pillow.
+
+    Rationale:
+    FFmpeg's native ICO/ICNS support is inconsistent; it often lacks high-resolution
+    packaging or cannot write ICNS files at all, so to handle this we:
+    1. Use FFmpeg to extract a single high-quality frame (or decode the image).
+    2. Use Pillow to handle square-cropping, transparency (RGBA), and packaging
+       the multiple resolution layers required by the .ico and .icns container formats.
+    """
+    import tempfile
+
+    from PIL import Image
+
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+
+    tmp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    tmp_path = Path(tmp_file.name)
+    tmp_file.close()
+
+    try:
+        args = ["-vframes", "1"]
+        if extra_args:
+            args.extend(extra_args)
+
+        convert(input_path, tmp_path, args, progress_callback)
+
+        try:
+            with Image.open(tmp_path) as img:
+                if img.mode != "RGBA":
+                    img = img.convert("RGBA")
+
+                # Ensure it is square to prevent icon aspect ratio distortion on some OS
+                size = min(img.size)
+                if img.size[0] != img.size[1]:
+                    # Crop to center square
+                    left = (img.size[0] - size) // 2
+                    top = (img.size[1] - size) // 2
+                    img = img.crop((left, top, left + size, top + size))
+
+                fmt = "ICO" if output_path.suffix.lower() == ".ico" else "ICNS"
+                img.save(output_path, format=fmt)
+        except Exception as e:
+            raise MediaConversionError(
+                f"Failed to generate {output_path.suffix.upper()} using Pillow",
+                stderr=str(e),
+            ) from e
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     return output_path.resolve()
+
+
+# --------------------------------------------------------------------------- #
+# Two-pass target-size encoding
+# --------------------------------------------------------------------------- #
+
+
+def convert_two_pass(
+    input_path: str | Path,
+    output_path: str | Path,
+    extra_args: list[str] | None = None,
+    progress_callback: Callable[[float], None] | None = None,
+) -> Path:
+    """Encode *input_path* using two-pass mode for target-size accuracy.
+
+    Pass 1 analyses the input (progress 0–50%).  Pass 2 encodes to the
+    final output (progress 50–100%).  Temporary ``ffmpeg2pass-*.log*``
+    files are cleaned up automatically.
+
+    Args:
+        input_path:  Source file.
+        output_path: Destination file.
+        extra_args:  FFmpeg CLI arguments including bitrate settings.
+        progress_callback: Optional callback receiving 0–100 progress.
+
+    Returns:
+        The resolved ``Path`` of the created output file.
+
+    Raises:
+        FFmpegNotFoundError: If ffmpeg is not on PATH.
+        MediaConversionError: If either pass fails.
+
+    """
+    ffmpeg_bin, _ = _require_ffmpeg()
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+    args = extra_args or []
+
+    duration_seconds = 0.0
+    if progress_callback:
+        try:
+            meta = probe(input_path)
+            raw = meta.get("format", {}).get("duration")
+            if raw is not None:
+                duration_seconds = float(raw)
+        except Exception:
+            pass
+
+    null_target = "NUL" if platform.system() == "Windows" else "/dev/null"
+
+    # --- Pass 1: analyse -------------------------------------------------- #
+    pass1_cmd = [
+        ffmpeg_bin,
+        "-i",
+        str(input_path),
+        *args,
+        "-pass",
+        "1",
+        "-an",
+        "-f",
+        "null",
+        "-y",
+        null_target,
+    ]
+
+    _execute_ffmpeg(
+        pass1_cmd,
+        duration_seconds,
+        progress_callback,
+        error_prefix="FFmpeg pass 1 failed",
+        offset=0.0,
+        scale=50.0,
+    )
+
+    # --- Pass 2: encode --------------------------------------------------- #
+    pass2_cmd = [
+        ffmpeg_bin,
+        "-i",
+        str(input_path),
+        *args,
+        "-pass",
+        "2",
+        "-y",
+        str(output_path),
+    ]
+
+    _execute_ffmpeg(
+        pass2_cmd,
+        duration_seconds,
+        progress_callback,
+        error_prefix="FFmpeg pass 2 failed",
+        offset=50.0,
+        scale=50.0,
+    )
+
+    # Clean up two-pass log files
+    for log_file in Path.cwd().glob("ffmpeg2pass-*"):
+        log_file.unlink(missing_ok=True)
+
+    return output_path.resolve()
+
+
+def compress_media(
+    input_path: str | Path,
+    output_path: str | Path,
+    options: CompressionOptions,
+    progress_callback: Callable[[float], None] | None = None,
+) -> Path:
+    """Compress video or audio by calculating ffmpeg arguments via options."""
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+    output_ext = output_path.suffix.lstrip(".").lower()
+
+    duration_seconds = 0.0
+    try:
+        meta = probe(input_path)
+        raw = meta.get("format", {}).get("duration")
+        if raw is not None:
+            duration_seconds = float(raw)
+    except Exception:
+        pass
+
+    args = options.to_ffmpeg_args(output_ext, duration_seconds)
+
+    if options.requires_two_pass(output_ext):
+        return convert_two_pass(
+            input_path,
+            output_path,
+            extra_args=args,
+            progress_callback=progress_callback,
+        )
+    return convert(
+        input_path, output_path, extra_args=args, progress_callback=progress_callback
+    )

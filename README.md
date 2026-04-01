@@ -17,33 +17,41 @@ Universal file converter with FFmpeg integration and a modern Windows-inspired U
 # Create a virtual environment
 python -m venv .venv
 
+# Activate the virtual environment
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# On macOS/Linux:
+source .venv/bin/activate
+
 # Install the application and development dependencies in editable mode
-.venv\Scripts\python.exe -m pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 ## 2. Running the Application
 
+Make sure your virtual environment is activated, then run:
+
 ```bash
 # Run the application
-.venv\Scripts\python.exe -m file_alchemy
+python -m file_alchemy
 
 # Alternatively, since it's installed, you can just run:
-.venv\Scripts\file-alchemy
+file-alchemy
 ```
 
 ## 3. Testing
 
-Tests run with coverage checks enabled by default (minimum 80% enforced):
+Tests run with coverage checks enabled by default (minimum 80% enforced). Ensure your virtual environment is activated:
 
 ```bash
 # Run all tests (coverage runs automatically)
-.venv\Scripts\python.exe -m pytest
+pytest
 
 # Run only the UI component tests
-.venv\Scripts\python.exe -m pytest tests/test_media_page.py -v
+pytest tests/test_media_page.py -v
 
 # Generate an HTML coverage report
-.venv\Scripts\python.exe -m pytest --cov-report=html
+pytest --cov-report=html
 ```
 
 Tests work headlessly in CI - `QT_QPA_PLATFORM=offscreen` is set automatically.
@@ -62,11 +70,11 @@ ruff format .
 
 To bundle the application into a distribution folder containing the executable and its dependencies, use the provided PyInstaller spec file.
 
-Run this command from the root of the project:
+Make sure your virtual environment is activated, then run this command from the root of the project:
 
 ```bash
-.venv\Scripts\pyinstaller "file_alchemy.spec"
+pyinstaller "file_alchemy.spec"
 ```
 
-- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The primary executable is `dist/File Alchemy/File Alchemy.exe`.
+- The final application and its compiled dependencies will be generated inside the `dist/File Alchemy/` folder. The exact executable name and layout may vary by platform and your PyInstaller configuration (for example, you may get a `.exe` on Windows).
 - You can safely delete the `build/` folder that generates during the process.

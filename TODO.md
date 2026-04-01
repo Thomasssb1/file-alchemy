@@ -11,9 +11,14 @@
 - [ ] **Niche 3D Asset Toolkit**: Implement custom pipelines to extract baked textures from `.GLTF` files or batch convert raw mesh topologies (e.g., FBX to OBJ).
 - [ ] **Advanced Video Trimming**: Give the user a timeline widget to rapidly split or extract segments from video files without re-encoding them (using `-c copy`).
 - [ ] **Audio Extraction**: Explicit one-click UI routes for tearing the audio track (MP3/WAV) off of a given video file.
+- [ ] **Image Manipulation**: Support basic image operations like cropping, resizing, and rotation.
 
 ### UI & Architecture Improvements
 
 - [ ] **Task Canceling System**: Add a "Stop/Cancel" button that securely interrupts the FFmpeg subprocess.
 - [ ] **Post-Batch Actions**: Add toggles to "Play sound on completion" or "Open output folder" when a massive queue finally finishes.
 - [ ] **Mac/Linux CI Build Matrix**: Expand the `.github/workflows/release.yml` matrix out to produce and upload compiled Darwin (macOS) and Linux targets.
+- [ ] UI Improvement: Add ability to hover file in FileListPanel to remove it from selected files.
+- [ ] UI Improvement: Add ability to right-click and remove a file from selected files.
+- [ ] Settings Feature: Add a toggle (enabled by default) to automatically remove an item from the selected files list upon successful conversion, to prevent duplicate re-runs.
+- [ ] **Customizable Window Controls**: Add a setting to allow users to manually choose between left-aligned (macOS style) and right-aligned (Windows style) window control buttons, overriding platform defaults.

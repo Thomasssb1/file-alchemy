@@ -19,6 +19,7 @@ build/
 .idea/
 .vscode/
 *.swp
+.DS_Store
 
 task.md
 implementation_plan.md

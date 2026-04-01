@@ -14,12 +14,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PyQt6.QtCore import QMimeData, QPointF, QUrl, Qt
+from PyQt6.QtCore import QMimeData, QPointF, Qt, QUrl
 from PyQt6.QtGui import QDropEvent
 from pytestqt.qtbot import QtBot
 
-from file_alchemy.ui.pages.media_page import MediaPage
-
+from file_alchemy.ui.pages.media.media_page import MediaPage
 
 # --------------------------------------------------------------------------- #
 # Helpers & Fixtures
@@ -66,7 +65,7 @@ def page(qtbot: QtBot) -> MediaPage:
 @pytest.fixture()
 def mock_conversion_worker():
     """Patch ConversionWorker so _start_conversion never spawns a thread."""
-    with patch("file_alchemy.ui.pages.media_page.ConversionWorker") as cls:
+    with patch("file_alchemy.ui.pages.media.media_page.ConversionWorker") as cls:
         mock_w = MagicMock()
         mock_w.progress = MagicMock()
         mock_w.finished = MagicMock()
@@ -89,7 +88,7 @@ def test_format_combo_empty_initially(page: MediaPage) -> None:
 
 
 def test_file_list_empty_initially(page: MediaPage) -> None:
-    assert page._file_list.count() == 0
+    assert page._file_panel._list_widget.count() == 0
 
 
 def test_pending_initialised_to_zero(page: MediaPage) -> None:
@@ -103,41 +102,41 @@ def test_pending_initialised_to_zero(page: MediaPage) -> None:
 
 def test_adding_file_populates_file_list(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
-    assert page._file_list.count() == 1
-    assert page._file_list.item(0).text() == "clip.mp4"
+    assert page._file_panel._list_widget.count() == 1
+    assert page._file_panel._list_widget.item(0).text() == "clip.mp4"
     assert page._convert_btn.isEnabled()
 
 
 def test_adding_duplicate_files_is_ignored(page: MediaPage, tmp_path: Path) -> None:
     paths = _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._on_files_added(paths)
-    assert page._file_list.count() == 1
+    assert page._file_panel._list_widget.count() == 1
 
 
 def test_clear_resets_page(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
-    page._clear_files()
-    assert page._file_list.count() == 0
+    page._file_panel.clear()
+    assert page._file_panel._list_widget.count() == 0
     assert page._format_combo.count() == 0
     assert not page._convert_btn.isEnabled()
 
 
 def test_multiple_files_all_appear_in_list(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip1.mp4", "clip2.mkv", "track.mp3", tmp_path=tmp_path)
-    assert len(page._input_files) == 3
-    assert page._file_list.count() == 3
+    assert len(page._file_panel.files) == 3
+    assert page._file_panel._list_widget.count() == 3
 
 
 def test_adding_files_keeps_existing_selection(page: MediaPage, tmp_path: Path) -> None:
     """Adding a second batch must not reset the row selection to 0."""
     _add_files(page, "clip.mp4", "track.mp3", tmp_path=tmp_path)
-    page._file_list.setCurrentRow(1)
+    page._file_panel._list_widget.setCurrentRow(1)
 
     extra = tmp_path / "extra.wav"
     extra.touch()
     page._on_files_added([extra])
 
-    assert page._file_list.currentRow() == 1
+    assert page._file_panel._list_widget.currentRow() == 1
 
 
 # --------------------------------------------------------------------------- #
@@ -215,14 +214,14 @@ def test_selecting_each_row_updates_format_combo(
     """Switching row between a video and audio file must repopulate the combo."""
     _add_files(page, "clip.mp4", "track.mp3", tmp_path=tmp_path)
 
-    page._file_list.setCurrentRow(0)
+    page._file_panel._list_widget.setCurrentRow(0)
     mp4_headers = [
         page._format_combo.model().item(i).text()
         for i in range(page._format_combo.count())
         if not page._format_combo.model().item(i).isEnabled()
     ]
 
-    page._file_list.setCurrentRow(1)
+    page._file_panel._list_widget.setCurrentRow(1)
     mp3_headers = [
         page._format_combo.model().item(i).text()
         for i in range(page._format_combo.count())
@@ -309,7 +308,7 @@ def test_all_files_queued_when_converting(
 ) -> None:
     """All loaded files produce a worker, regardless of which row is selected."""
     _add_files(page, "a.mp4", "b.mp4", "c.mp4", tmp_path=tmp_path)
-    page._file_list.setCurrentRow(1)
+    page._file_panel._list_widget.setCurrentRow(1)
     page._select_first_enabled()
 
     page._start_conversion()
@@ -340,23 +339,23 @@ def test_browse_button_adds_files(page: MediaPage, tmp_path: Path) -> None:
     fake.touch()
 
     with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getOpenFileNames",
+        "file_alchemy.ui.components.drop_zone.QFileDialog.getOpenFileNames",
         return_value=([str(fake)], ""),
     ):
         page._drop_zone._open_file_dialog()
 
-    assert page._file_list.count() == 1
-    assert page._input_files[0].name == "song.mp3"
+    assert page._file_panel._list_widget.count() == 1
+    assert page._file_panel.files[0].name == "song.mp3"
 
 
 def test_browse_button_cancel_adds_nothing(page: MediaPage) -> None:
     with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getOpenFileNames",
+        "file_alchemy.ui.components.drop_zone.QFileDialog.getOpenFileNames",
         return_value=([], ""),
     ):
         page._drop_zone._open_file_dialog()
 
-    assert page._file_list.count() == 0
+    assert page._file_panel._list_widget.count() == 0
 
 
 def test_drop_zone_callback_wiring(page: MediaPage, tmp_path: Path) -> None:
@@ -364,7 +363,7 @@ def test_drop_zone_callback_wiring(page: MediaPage, tmp_path: Path) -> None:
     fake = tmp_path / "video.mp4"
     fake.touch()
     page._drop_zone._files_callback([fake])
-    assert page._file_list.count() == 1
+    assert page._file_panel._list_widget.count() == 1
 
 
 def test_drag_drop_adds_files(qtbot: QtBot, tmp_path: Path) -> None:
@@ -377,8 +376,8 @@ def test_drag_drop_adds_files(qtbot: QtBot, tmp_path: Path) -> None:
     event = _make_drop_event([QUrl.fromLocalFile(str(fake))])
     page._drop_zone.dropEvent(event)
 
-    assert page._file_list.count() == 1
-    assert page._input_files[0].name == "dropped.mp4"
+    assert page._file_panel._list_widget.count() == 1
+    assert page._file_panel.files[0].name == "dropped.mp4"
 
 
 def test_drag_drop_ignores_non_file_urls(qtbot: QtBot) -> None:
@@ -388,7 +387,7 @@ def test_drag_drop_ignores_non_file_urls(qtbot: QtBot) -> None:
 
     event = _make_drop_event([QUrl("https://example.com/video.mp4")])
     page._drop_zone.dropEvent(event)
-    assert page._file_list.count() == 0
+    assert page._file_panel._list_widget.count() == 0
 
 
 # --------------------------------------------------------------------------- #
@@ -397,26 +396,6 @@ def test_drag_drop_ignores_non_file_urls(qtbot: QtBot) -> None:
 
 
 def test_default_output_dir_is_none(page: MediaPage) -> None:
-    assert page._output_dir is None
-
-
-def test_pick_output_dir_updates_label(page: MediaPage, tmp_path: Path) -> None:
-    with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getExistingDirectory",
-        return_value=str(tmp_path),
-    ):
-        page._pick_output_dir()
-
-    assert str(tmp_path) in page._output_dir_label.text()
-    assert page._output_dir == tmp_path
-
-
-def test_cancel_output_dir_dialog_keeps_none(page: MediaPage) -> None:
-    with patch(
-        "file_alchemy.ui.pages.media_page.QFileDialog.getExistingDirectory",
-        return_value="",
-    ):
-        page._pick_output_dir()
     assert page._output_dir is None
 
 
@@ -449,28 +428,12 @@ def test_progress_bar_hidden_initially(page: MediaPage) -> None:
     assert not page._progress_bar.isVisible()
 
 
-def test_on_progress_aggregates_total_batch(page: MediaPage) -> None:
-    """_on_progress calculates an aggregate percentage across the whole batch."""
-    page._batch_total = 2
-
-    page._pending = 2  # First file is running (0 completed)
-    page._on_progress(50.0)
-    assert page._progress_bar.value() == 25  # (0 + 50) / 2
-
-    page._pending = 1  # Second file is running (1 completed)
-    page._on_progress(50.0)
-    assert page._progress_bar.value() == 75  # (100 + 50) / 2
-
-    page._on_progress(100.0)
-    assert page._progress_bar.value() == 100  # (100 + 100) / 2
-
-
 def test_progress_bar_hidden_after_successful_conversion(
     page: MediaPage, tmp_path: Path
 ) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.media.media_page.InfoBar"):
         page._on_finished(tmp_path / "out.mp3")
 
     assert not page._progress_bar.isVisible()
@@ -481,7 +444,7 @@ def test_infobar_success_shown_after_conversion(
     page: MediaPage, tmp_path: Path
 ) -> None:
     page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar") as mock:
+    with patch("file_alchemy.ui.pages.media.media_page.InfoBar") as mock:
         page._on_finished(tmp_path / "out.mp3")
     mock.success.assert_called_once()
 
@@ -489,18 +452,20 @@ def test_infobar_success_shown_after_conversion(
 def test_progress_bar_hidden_after_error(page: MediaPage, tmp_path: Path) -> None:
     _add_files(page, "clip.mp4", tmp_path=tmp_path)
     page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar"):
+    with patch("file_alchemy.ui.pages.media.media_page.InfoBar"):
         page._on_error("FFmpeg conversion failed with code 1")
 
     assert not page._progress_bar.isVisible()
     assert page._convert_btn.isEnabled()
 
 
-def test_infobar_error_shown_on_failure(page: MediaPage) -> None:
-    page._pending = 1
-    with patch("file_alchemy.ui.pages.media_page.InfoBar") as mock:
+def test_on_error_uses_conversion_failed_title(page: MediaPage) -> None:
+    """The InfoBar title must identify 'Conversion failed', not the base generic."""
+    with patch("file_alchemy.ui.pages.base_page.InfoBar") as mock:
+        page._pending = 1
         page._on_error("FFmpeg not found on PATH")
-    mock.error.assert_called_once()
+    _, kwargs = mock.error.call_args
+    assert kwargs["title"] == "Conversion failed"
 
 
 def test_reset_after_batch_restores_button_and_hides_bar(

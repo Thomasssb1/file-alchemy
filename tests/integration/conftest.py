@@ -56,3 +56,28 @@ def sample_png(tmp_path_factory: pytest.TempPathFactory) -> Path:
     yield png
     if png.exists():
         png.unlink()
+
+
+@pytest.fixture
+def sample_mp4(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate a 1-second test MP4 file using FFmpeg."""
+    tmp_dir = tmp_path_factory.mktemp("media_mp4")
+    mp4 = tmp_dir / "test.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=1:size=160x120:rate=10",
+            "-pix_fmt",
+            "yuv420p",
+            str(mp4),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    yield mp4
+    if mp4.exists():
+        mp4.unlink()
