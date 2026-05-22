@@ -48,6 +48,11 @@ def _format_size(size_bytes: int) -> str:
     return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
 
+def _gif_frame_step_suffix(value: int) -> str:
+    """Return the pluralized spinbox suffix for a GIF frame-step value."""
+    return " frame" if value == 1 else " frames"
+
+
 _ALWAYS_LOSSLESS_EXTS: frozenset[str] = frozenset({"png", "bmp", "ico", "tiff", "tif"})
 
 
@@ -164,13 +169,14 @@ class CompressionPage(BaseBatchPage):
         gif_layout = QVBoxLayout(self._gif_frame_widget)
         gif_layout.setContentsMargins(0, 0, 0, 0)
 
-        gif_layout.addWidget(QLabel("GIF frames: keep every"))
+        self._gif_frame_label = QLabel("GIF frame sampling: keep 1 out of every")
+        gif_layout.addWidget(self._gif_frame_label)
 
         self._gif_frame_spinbox = QSpinBox()
         self._gif_frame_spinbox.setRange(1, 120)
         self._gif_frame_spinbox.setValue(1)
-        self._gif_frame_spinbox.setSuffix(" frame")
-        self._gif_frame_spinbox.valueChanged.connect(self._update_estimated_size)
+        self._gif_frame_spinbox.setSuffix(_gif_frame_step_suffix(1))
+        self._gif_frame_spinbox.valueChanged.connect(self._on_gif_frame_step_changed)
         gif_layout.addWidget(self._gif_frame_spinbox)
         col.addWidget(self._gif_frame_widget)
 
@@ -247,6 +253,10 @@ class CompressionPage(BaseBatchPage):
 
     def _on_quality_changed(self, value: int) -> None:
         self._quality_label.setText(f"Quality: {value}")
+        self._update_estimated_size()
+
+    def _on_gif_frame_step_changed(self, value: int) -> None:
+        self._gif_frame_spinbox.setSuffix(_gif_frame_step_suffix(value))
         self._update_estimated_size()
 
     def _on_files_added(self, paths: list[Path]) -> None:

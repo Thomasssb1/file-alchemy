@@ -14,6 +14,7 @@ from file_alchemy.ui.pages.compression.compression_page import (
     CompressionPage,
     _ALWAYS_LOSSLESS_EXTS,
     _format_size,
+    _gif_frame_step_suffix,
 )
 
 # --------------------------------------------------------------------------- #
@@ -161,6 +162,32 @@ def test_gif_frame_control_tracks_selected_file(
 
     compression_page._file_panel._list_widget.setCurrentRow(1)
     assert not compression_page._gif_frame_widget.isVisible()
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (1, " frame"),
+        (2, " frames"),
+        (120, " frames"),
+    ],
+)
+def test_gif_frame_step_suffix(value: int, expected: str) -> None:
+    assert _gif_frame_step_suffix(value) == expected
+
+
+def test_gif_frame_control_wording_and_pluralization(
+    compression_page: CompressionPage,
+) -> None:
+    assert compression_page._gif_frame_label.text() == (
+        "GIF frame sampling: keep 1 out of every"
+    )
+    assert "keep every" not in compression_page._gif_frame_label.text()
+    assert compression_page._gif_frame_spinbox.suffix() == " frame"
+
+    compression_page._gif_frame_spinbox.setValue(3)
+
+    assert compression_page._gif_frame_spinbox.suffix() == " frames"
 
 
 # --------------------------------------------------------------------------- #
