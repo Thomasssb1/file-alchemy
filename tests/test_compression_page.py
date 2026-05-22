@@ -92,6 +92,7 @@ def test_initial_state(compression_page: CompressionPage) -> None:
 
     assert not compression_page._quality_widget.isVisible()
     assert not compression_page._target_widget.isVisible()
+    assert not compression_page._gif_frame_widget.isVisible()
     assert not compression_page._compress_btn.isEnabled()
     assert not compression_page._progress_bar.isVisible()
     assert compression_page._output_dir is None
@@ -129,6 +130,20 @@ def test_slider_updates_label(compression_page: CompressionPage) -> None:
     assert "42" in compression_page._quality_label.text()
 
 
+def test_gif_frame_control_visible_for_selected_gif(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    _add_files(compression_page, "animation.gif", tmp_path=tmp_path)
+    assert compression_page._gif_frame_widget.isVisible()
+
+
+def test_gif_frame_control_hidden_for_non_gif(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    _add_files(compression_page, "photo.jpg", tmp_path=tmp_path)
+    assert not compression_page._gif_frame_widget.isVisible()
+
+
 # --------------------------------------------------------------------------- #
 # _get_current_options — edge cases across all 3 modes
 # --------------------------------------------------------------------------- #
@@ -161,6 +176,14 @@ def test_get_current_options_lossy_max_quality(
     compression_page._quality_slider.setValue(100)
     opts = compression_page._get_current_options()
     assert opts.quality == 100
+
+
+def test_get_current_options_includes_gif_frame_step(
+    compression_page: CompressionPage,
+) -> None:
+    compression_page._gif_frame_spinbox.setValue(3)
+    opts = compression_page._get_current_options()
+    assert opts.gif_frame_step == 3
 
 
 @pytest.mark.parametrize(
@@ -953,6 +976,18 @@ def test_estimated_size_lossless(
 
     compression_page._radio_lossless.setChecked(True)
     assert "1000 B" in compression_page._estimate_label.text()
+
+
+def test_estimated_size_gif_updates_with_frame_step(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    f = tmp_path / "animation.gif"
+    f.write_bytes(b"x" * 1000)
+    compression_page._on_files_added([f])
+
+    compression_page._gif_frame_spinbox.setValue(4)
+
+    assert "250 B" in compression_page._estimate_label.text()
 
 
 def test_estimated_size_target_shows_exact_value(

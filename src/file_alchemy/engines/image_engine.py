@@ -6,7 +6,7 @@ import io
 from collections.abc import Callable
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageSequence
 
 from file_alchemy.engines.compression.compression_mode import CompressionMode
 from file_alchemy.engines.compression.compression_options import CompressionOptions
@@ -23,7 +23,11 @@ _EXT_TO_FORMAT: dict[str, str] = {
     "tif": "TIFF",
     "ico": "ICO",
     "avif": "AVIF",
+    "gif": "GIF",
 }
+
+_GIF_MIN_COLORS = 2
+_GIF_MAX_COLORS = 256
 
 
 def _resolve_format(output_ext: str) -> str:
@@ -80,6 +84,112 @@ def _binary_search_quality(
     return best
 
 
+def _quality_to_gif_colors(quality: int) -> int:
+    """Map user-facing quality 1-100 to a GIF palette size of 2-256 colors."""
+    clamped = max(1, min(quality, 100))
+    return round(
+        _GIF_MIN_COLORS + (_GIF_MAX_COLORS - _GIF_MIN_COLORS) * (clamped - 1) / 99
+    )
+
+
+def _prepare_gif_frames(
+    img: Image.Image,
+    colors: int | None,
+    frame_step: int = 1,
+) -> tuple[list[Image.Image], dict[str, object]]:
+    """Return GIF frames and save options while preserving animation metadata."""
+    frames: list[Image.Image] = []
+    durations: list[int] = []
+    disposals: list[int] = []
+    frame_step = max(1, frame_step)
+
+    for frame_index, frame in enumerate(ImageSequence.Iterator(img)):
+        frame_duration = int(frame.info.get("duration", img.info.get("duration", 100)))
+
+        if frame_index % frame_step != 0:
+            if durations:
+                durations[-1] += frame_duration
+            continue
+
+        copied_frame = frame.copy()
+        if colors is not None:
+            copied_frame = copied_frame.convert("RGBA").quantize(
+                colors=colors,
+                method=Image.Quantize.FASTOCTREE,
+                dither=Image.Dither.NONE,
+            )
+
+        frames.append(copied_frame)
+        durations.append(frame_duration)
+
+        disposal = getattr(frame, "disposal_method", frame.info.get("disposal"))
+        if disposal is not None:
+            disposals.append(int(disposal))
+
+    if not frames:
+        raise MediaConversionError("GIF contains no frames.")
+
+    save_kwargs: dict[str, object] = {"optimize": True}
+    if len(frames) > 1:
+        save_kwargs["save_all"] = True
+        save_kwargs["append_images"] = frames[1:]
+        save_kwargs["duration"] = durations
+    else:
+        save_kwargs["duration"] = durations[0]
+
+    loop = img.info.get("loop")
+    if loop is not None:
+        save_kwargs["loop"] = int(loop)
+
+    if len(disposals) == len(frames):
+        save_kwargs["disposal"] = disposals if len(disposals) > 1 else disposals[0]
+
+    return frames, save_kwargs
+
+
+def _save_gif_to_bytes(
+    frames: list[Image.Image], save_kwargs: dict[str, object]
+) -> bytes:
+    """Save GIF frames into an in-memory buffer and return raw bytes."""
+    buf = io.BytesIO()
+    frames[0].save(buf, format="GIF", **save_kwargs)
+    return buf.getvalue()
+
+
+def _binary_search_gif_colors(
+    img: Image.Image,
+    target_bytes: int,
+    frame_step: int,
+    lo: int = _GIF_MIN_COLORS,
+    hi: int = _GIF_MAX_COLORS,
+) -> int:
+    """Find the largest palette size whose GIF output is <= target_bytes."""
+    best = lo
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        frames, save_kwargs = _prepare_gif_frames(img, mid, frame_step)
+        data = _save_gif_to_bytes(frames, save_kwargs)
+        if len(data) <= target_bytes:
+            best = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
+def _compress_gif_to_bytes(img: Image.Image, options: CompressionOptions) -> bytes:
+    """Compress a GIF while preserving every frame of an animated input."""
+    colors: int | None = None
+    frame_step = max(1, options.gif_frame_step)
+    if options.mode is CompressionMode.LOSSY:
+        colors = _quality_to_gif_colors(options.quality)
+    elif options.mode is CompressionMode.TARGET_SIZE and options.target_bytes:
+        colors = _binary_search_gif_colors(img, options.target_bytes, frame_step)
+
+    frames, save_kwargs = _prepare_gif_frames(img, colors, frame_step)
+    return _save_gif_to_bytes(frames, save_kwargs)
+
+
 def compress_image(
     input_path: str | Path,
     output_path: str | Path,
@@ -108,12 +218,35 @@ def compress_image(
 
     try:
         with Image.open(input_path) as opened_img:
+            if fmt == "GIF":
+                try:
+                    gif_data = _compress_gif_to_bytes(opened_img, options)
+                except MediaConversionError:
+                    raise
+                except Exception as exc:
+                    raise MediaConversionError(
+                        f"Failed to save image: {output_path}", stderr=str(exc)
+                    ) from exc
+
+                try:
+                    output_path.write_bytes(gif_data)
+                except Exception as exc:
+                    raise MediaConversionError(
+                        f"Failed to save image: {output_path}", stderr=str(exc)
+                    ) from exc
+
+                if progress_callback:
+                    progress_callback(100.0)
+                return output_path.resolve()
+
             # Ensure RGB for JPEG (which cannot handle alpha in compression)
             if fmt == "JPEG" and opened_img.mode in {"RGBA", "P", "LA"}:
                 img = opened_img.convert("RGB")
             else:
                 # Ensure we hold an in-memory copy after the file is closed
                 img = opened_img.copy()
+    except MediaConversionError:
+        raise
     except Exception as exc:
         raise MediaConversionError(
             f"Failed to open image: {input_path}", stderr=str(exc)

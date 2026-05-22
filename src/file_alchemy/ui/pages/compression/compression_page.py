@@ -160,6 +160,20 @@ class CompressionPage(BaseBatchPage):
         t_layout.addWidget(self._target_unit)
         col.addWidget(self._target_widget)
 
+        self._gif_frame_widget = QWidget()
+        gif_layout = QVBoxLayout(self._gif_frame_widget)
+        gif_layout.setContentsMargins(0, 0, 0, 0)
+
+        gif_layout.addWidget(QLabel("GIF frames: keep every"))
+
+        self._gif_frame_spinbox = QSpinBox()
+        self._gif_frame_spinbox.setRange(1, 120)
+        self._gif_frame_spinbox.setValue(1)
+        self._gif_frame_spinbox.setSuffix(" frame")
+        self._gif_frame_spinbox.valueChanged.connect(self._update_estimated_size)
+        gif_layout.addWidget(self._gif_frame_spinbox)
+        col.addWidget(self._gif_frame_widget)
+
         col.addSpacing(8)
 
         self._estimate_label = QLabel("Est. output: ≈ --")
@@ -255,6 +269,7 @@ class CompressionPage(BaseBatchPage):
             mode=self._mode,
             quality=self._quality_slider.value(),
             target_bytes=target_bytes,
+            gif_frame_step=self._gif_frame_spinbox.value(),
         )
 
     def _update_estimated_size(self) -> None:
@@ -262,6 +277,7 @@ class CompressionPage(BaseBatchPage):
         if not files:
             self._estimate_label.setText("Est. output: ≈ --")
             self._format_note_label.setVisible(False)
+            self._gif_frame_widget.setVisible(False)
             return
 
         row = self._file_panel.current_row
@@ -282,6 +298,7 @@ class CompressionPage(BaseBatchPage):
         # the chosen mode, so the user understands why quality changes have no
         # visible effect on the output.
         ext = path.suffix.lstrip(".").lower()
+        self._gif_frame_widget.setVisible(ext == "gif")
         show_note = (
             ext in _ALWAYS_LOSSLESS_EXTS
             and options.mode is not CompressionMode.LOSSLESS

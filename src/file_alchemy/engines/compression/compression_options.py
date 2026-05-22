@@ -61,12 +61,14 @@ class CompressionOptions:
         mode:         The compression strategy.
         quality:      User-facing quality level (1–100). Only used for LOSSY.
         target_bytes: Desired output file size in bytes. Only used for TARGET_SIZE.
+        gif_frame_step: Keep every Nth GIF frame; 1 keeps all frames.
 
     """
 
     mode: CompressionMode
     quality: int = 75
     target_bytes: int | None = None
+    gif_frame_step: int = 1
 
     # ------------------------------------------------------------------ #
     # FFmpeg argument builders
@@ -253,9 +255,14 @@ class CompressionOptions:
         if self.mode is CompressionMode.TARGET_SIZE:
             return self.target_bytes
 
+        gif_frame_ratio = 1
+        if input_path.suffix.lower() == ".gif":
+            gif_frame_ratio = max(1, self.gif_frame_step)
+
         if self.mode is CompressionMode.LOSSLESS:
-            return original_bytes
+            return max(1, int(original_bytes / gif_frame_ratio))
 
         # LOSSY: approximate output size using a quadratic quality curve.
         ratio = (self.quality / 100) ** 2
+        ratio /= gif_frame_ratio
         return max(1, int(original_bytes * ratio))

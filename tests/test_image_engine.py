@@ -26,6 +26,7 @@ from file_alchemy.errors.media_conversion_error import MediaConversionError
         ("png", "PNG"),
         ("webp", "WEBP"),
         ("avif", "AVIF"),
+        ("gif", "GIF"),
         ("tiff", "TIFF"),
         ("tif", "TIFF"),
     ],
@@ -163,3 +164,90 @@ def test_compress_image_rgba_to_jpeg_conversion(tmp_path: Path) -> None:
     assert res.exists()
     opened = Image.open(res)
     assert opened.mode == "RGB"
+
+
+def test_compress_animated_gif_preserves_frames(tmp_path: Path) -> None:
+    """Animated GIF compression must not collapse output to a single frame."""
+    gif_path = tmp_path / "animated.gif"
+    frames = [
+        Image.new("RGB", (32, 32), color="red"),
+        Image.new("RGB", (32, 32), color="blue"),
+        Image.new("RGB", (32, 32), color="green"),
+    ]
+    frames[0].save(
+        gif_path,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=[40, 50, 60],
+        loop=0,
+    )
+
+    out_path = tmp_path / "animated_compressed.gif"
+    opts = CompressionOptions(CompressionMode.LOSSY, quality=20)
+
+    res = compress_image(gif_path, out_path, opts)
+
+    assert res == out_path.resolve()
+    with Image.open(res) as opened:
+        assert opened.is_animated
+        assert opened.n_frames == 3
+        assert opened.info["loop"] == 0
+
+
+def test_compress_gif_frame_step_skips_frames(tmp_path: Path) -> None:
+    """GIF frame-step compression should keep every Nth frame and preserve timing."""
+    gif_path = tmp_path / "animated.gif"
+    frames = [
+        Image.new("RGB", (32, 32), color=color)
+        for color in ("red", "blue", "green", "yellow", "purple")
+    ]
+    frames[0].save(
+        gif_path,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=[10, 20, 30, 40, 50],
+        loop=0,
+    )
+
+    out_path = tmp_path / "skipped.gif"
+    opts = CompressionOptions(CompressionMode.LOSSY, quality=80, gif_frame_step=2)
+
+    res = compress_image(gif_path, out_path, opts)
+
+    assert res.exists()
+    with Image.open(res) as opened:
+        assert opened.n_frames == 3
+        durations = []
+        for frame_index in range(opened.n_frames):
+            opened.seek(frame_index)
+            durations.append(opened.info["duration"])
+        assert durations == [30, 70, 50]
+
+
+def test_compress_gif_target_size_creates_output(tmp_path: Path) -> None:
+    """GIF target-size mode should create a GIF using palette reduction."""
+    gif_path = tmp_path / "source.gif"
+    frames = [
+        Image.linear_gradient("L").resize((96, 96)).convert("RGB"),
+        Image.radial_gradient("L").resize((96, 96)).convert("RGB"),
+    ]
+    frames[0].save(
+        gif_path,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=75,
+        loop=0,
+    )
+
+    out_path = tmp_path / "target.gif"
+    opts = CompressionOptions(CompressionMode.TARGET_SIZE, target_bytes=1200)
+
+    res = compress_image(gif_path, out_path, opts)
+
+    assert res.exists()
+    with Image.open(res) as opened:
+        assert opened.format == "GIF"
+        assert opened.n_frames == 2
