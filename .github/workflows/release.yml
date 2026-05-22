@@ -7,13 +7,100 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    uses: ./.github/workflows/ci.yml
+  validate-release:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
 
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up dev environment
+        uses: ./.github/actions/setup-python-dev
+        with:
+          python-version: "3.11"
+
+      - name: Get version from pyproject.toml
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Verify Tag Matches Project Version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          PROJECT_VERSION=${{ steps.get_version.outputs.version }}
+          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
+            echo "Error: Tag version (v$TAG_VERSION) does not match pyproject.toml version ($PROJECT_VERSION)"
+            exit 1
+          fi
+          echo "Success: Tag v$TAG_VERSION matches project version!"
+
+  lint:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up dev environment
+        uses: ./.github/actions/setup-python-dev
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux system dependencies
+        uses: ./.github/actions/install-linux-system-deps
+
+      - name: Format project source
+        run: ruff format --check .
+
+      - name: Analyze project source
+        run: ruff check .
+
+  test:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up dev environment
+        uses: ./.github/actions/setup-python-dev
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux system dependencies
+        uses: ./.github/actions/install-linux-system-deps
+
+      - name: Run tests and collect coverage
+        run: |
+          if [ -d tests ]; then
+            pytest --cov-report=json
+          else
+            echo "No tests directory found, skipping pytest."
+          fi
+
+      - name: Upload coverage data
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-data
+          path: coverage.json
+          retention-days: 1
+          if-no-files-found: ignore
+
   update-badge:
-    needs: build
+    needs: test
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -31,53 +118,16 @@ jobs:
         with:
           name: coverage-data
 
-      - name: Update Coverage Badge in README
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! git merge-base --is-ancestor "${{ github.sha }}" HEAD; then
-            echo "Skipping update: Tag commit (${{ github.sha }}) is not an ancestor of main ($(git rev-parse HEAD))."
-            exit 0
-          fi
-          
-          if [ -f coverage.json ]; then
-            # Extract coverage percentage from coverage.json
-            COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
-            
-            # Determine color
-            COLOR="green"
-            if [ "$COV" -lt 80 ]; then COLOR="red"; fi
-            if [ "$COV" -ge 80 ] && [ "$COV" -lt 90 ]; then COLOR="yellow"; fi
-            
-            # Replace badge in README.md
-            sed -i -E "s/coverage-[a-zA-Z0-9%]+-[a-zA-Z]+/coverage-${COV}%25-${COLOR}/g" README.md
-            
-            # Commit changes on a dedicated branch and open a PR
-            git config --global user.name "github-actions"
-            git config --global user.email "github-actions@github.com"
-            git add README.md
-            
-            # If there are no changes staged, exit without creating a branch/PR
-            if git diff --cached --quiet; then
-              echo "No coverage changes to commit"
-              exit 0
-            fi
-            
-            BRANCH_NAME="coverage-badge-update-${GITHUB_RUN_ID}"
-            git checkout -b "$BRANCH_NAME"
-            git commit -m "docs: update coverage badge to ${COV}% [skip ci]"
-            git push origin "$BRANCH_NAME"
-            
-            # Create a pull request targeting main (if possible)
-            gh pr create \
-              --base main \
-              --head "$BRANCH_NAME" \
-              --title "docs: update coverage badge to ${COV}%" \
-              --body "Automated update of coverage badge to ${COV}%." || echo "Pull request creation skipped or failed"
-          fi
+      - name: Update coverage badge
+        uses: ./.github/actions/update-coverage-badge
+        with:
+          source-sha: ${{ github.sha }}
 
   release:
-    needs: build
+    needs:
+      - validate-release
+      - lint
+      - test
     runs-on: windows-latest
     permissions:
       contents: write
@@ -85,61 +135,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up dev environment
+        uses: ./.github/actions/setup-python-dev
         with:
           python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Get version from pyproject.toml
-        id: get_version
-        shell: bash
-        run: |
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Verify Tag Matches Project Version
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          PROJECT_VERSION=${{ steps.get_version.outputs.version }}
-          if [ "$TAG_VERSION" != "$PROJECT_VERSION" ]; then
-            echo "Error: Tag version (v$TAG_VERSION) does not match pyproject.toml version ($PROJECT_VERSION)"
-            exit 1
-          fi
-          echo "Success: Tag v$TAG_VERSION matches project version!"
 
       - name: Build Windows Executable
-        if: steps.get_version.outputs.version != '0.0.0'
+        if: needs.validate-release.outputs.version != '0.0.0'
         run: |
           pyinstaller file_alchemy.spec
 
       - name: Zip distribution folder
-        if: steps.get_version.outputs.version != '0.0.0'
+        if: needs.validate-release.outputs.version != '0.0.0'
         shell: pwsh
         run: |
-          Compress-Archive -Path 'dist/File Alchemy/*' -DestinationPath "dist/File-Alchemy-v${{ steps.get_version.outputs.version }}-Windows.zip"
+          Compress-Archive -Path 'dist/File Alchemy/*' -DestinationPath "dist/File-Alchemy-v${{ needs.validate-release.outputs.version }}-Windows.zip"
 
       - name: Ensure CHANGELOG entry exists & extract notes
         id: changelog
-        if: steps.get_version.outputs.version != '0.0.0'
+        if: needs.validate-release.outputs.version != '0.0.0'
         uses: mindsers/changelog-reader-action@v2
         with:
-          version: ${{ steps.get_version.outputs.version }}
+          version: ${{ needs.validate-release.outputs.version }}
           path: ./CHANGELOG.md
 
       - name: Create GitHub Release
-        if: steps.get_version.outputs.version != '0.0.0'
+        if: needs.validate-release.outputs.version != '0.0.0'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Release v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ needs.validate-release.outputs.version }}
+          name: Release v${{ needs.validate-release.outputs.version }}
           body: ${{ steps.changelog.outputs.changes }}
           files: |
             dist/File-Alchemy-*-Windows.zip

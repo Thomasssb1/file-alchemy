@@ -1,0 +1,54 @@
+name: Update Coverage Badge
+description: Update the README coverage badge and open a pull request when needed.
+
+inputs:
+  source-sha:
+    description: SHA of the tag commit that produced the coverage artifact.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Update coverage badge in README
+      shell: bash
+      env:
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        if ! git merge-base --is-ancestor "$SOURCE_SHA" HEAD; then
+          echo "Skipping update: Tag commit ($SOURCE_SHA) is not an ancestor of main ($(git rev-parse HEAD))."
+          exit 0
+        fi
+
+        if [ ! -f coverage.json ]; then
+          echo "coverage.json not found; skipping badge update."
+          exit 0
+        fi
+
+        COV=$(python3 -c "import json; print(int(float(json.load(open('coverage.json'))['totals']['percent_covered_display'])))")
+
+        COLOR="green"
+        if [ "$COV" -lt 80 ]; then COLOR="red"; fi
+        if [ "$COV" -ge 80 ] && [ "$COV" -lt 90 ]; then COLOR="yellow"; fi
+
+        sed -i -E "s/coverage-[a-zA-Z0-9%]+-[a-zA-Z]+/coverage-${COV}%25-${COLOR}/g" README.md
+
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+        git add README.md
+
+        if git diff --cached --quiet; then
+          echo "No coverage changes to commit"
+          exit 0
+        fi
+
+        BRANCH_NAME="coverage-badge-update-${GITHUB_RUN_ID}"
+        git checkout -b "$BRANCH_NAME"
+        git commit -m "docs: update coverage badge to ${COV}% [skip ci]"
+        git push origin "$BRANCH_NAME"
+
+        gh pr create \
+          --base main \
+          --head "$BRANCH_NAME" \
+          --title "docs: update coverage badge to ${COV}%" \
+          --body "Automated update of coverage badge to ${COV}%." || echo "Pull request creation skipped or failed"
