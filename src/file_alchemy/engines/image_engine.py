@@ -163,7 +163,12 @@ def _binary_search_gif_colors(
     lo: int = _GIF_MIN_COLORS,
     hi: int = _GIF_MAX_COLORS,
 ) -> int:
-    """Find the largest palette size whose GIF output is <= target_bytes."""
+    """Find the largest palette size whose GIF output is <= *target_bytes*.
+
+    Uses a binary search on GIF palette size. If even the smallest palette
+    size exceeds the target, returns ``lo`` (the smallest file we can
+    produce).
+    """
     best = lo
     while lo <= hi:
         mid = (lo + hi) // 2
@@ -178,7 +183,7 @@ def _binary_search_gif_colors(
 
 
 def _compress_gif_to_bytes(img: Image.Image, options: CompressionOptions) -> bytes:
-    """Compress a GIF while preserving every frame of an animated input."""
+    """Compress a GIF while preserving animation metadata and optionally sampling frames."""
     colors: int | None = None
     frame_step = max(1, options.gif_frame_step)
     if options.mode is CompressionMode.LOSSY:
