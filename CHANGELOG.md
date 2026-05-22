@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-22
+
+### Added
+
+- **GIF Compression**: Added GIF compression support, including animated GIF preservation, palette reduction, and target-size compression.
+- **GIF Frame Sampling**: Added a GIF-only frame sampling control to keep 1 out of every N frames during compression.
+
 ## [1.1.0] - 2026-04-01
 
 ### Added
