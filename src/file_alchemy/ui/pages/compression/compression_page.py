@@ -48,6 +48,11 @@ def _format_size(size_bytes: int) -> str:
     return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
 
+def _gif_frame_step_suffix(value: int) -> str:
+    """Return the pluralized spinbox suffix for a GIF frame-step value."""
+    return " frame" if value == 1 else " frames"
+
+
 _ALWAYS_LOSSLESS_EXTS: frozenset[str] = frozenset({"png", "bmp", "ico", "tiff", "tif"})
 
 
@@ -160,6 +165,21 @@ class CompressionPage(BaseBatchPage):
         t_layout.addWidget(self._target_unit)
         col.addWidget(self._target_widget)
 
+        self._gif_frame_widget = QWidget()
+        gif_layout = QVBoxLayout(self._gif_frame_widget)
+        gif_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._gif_frame_label = QLabel("GIF frame sampling: keep 1 out of every")
+        gif_layout.addWidget(self._gif_frame_label)
+
+        self._gif_frame_spinbox = QSpinBox()
+        self._gif_frame_spinbox.setRange(1, 120)
+        self._gif_frame_spinbox.setValue(1)
+        self._gif_frame_spinbox.setSuffix(_gif_frame_step_suffix(1))
+        self._gif_frame_spinbox.valueChanged.connect(self._on_gif_frame_step_changed)
+        gif_layout.addWidget(self._gif_frame_spinbox)
+        col.addWidget(self._gif_frame_widget)
+
         col.addSpacing(8)
 
         self._estimate_label = QLabel("Est. output: ≈ --")
@@ -235,6 +255,10 @@ class CompressionPage(BaseBatchPage):
         self._quality_label.setText(f"Quality: {value}")
         self._update_estimated_size()
 
+    def _on_gif_frame_step_changed(self, value: int) -> None:
+        self._gif_frame_spinbox.setSuffix(_gif_frame_step_suffix(value))
+        self._update_estimated_size()
+
     def _on_files_added(self, paths: list[Path]) -> None:
         valid_paths = [p for p in paths if ext_category(p.suffix.lstrip(".").lower())]
         if not valid_paths:
@@ -255,6 +279,7 @@ class CompressionPage(BaseBatchPage):
             mode=self._mode,
             quality=self._quality_slider.value(),
             target_bytes=target_bytes,
+            gif_frame_step=self._gif_frame_spinbox.value(),
         )
 
     def _update_estimated_size(self) -> None:
@@ -262,6 +287,7 @@ class CompressionPage(BaseBatchPage):
         if not files:
             self._estimate_label.setText("Est. output: ≈ --")
             self._format_note_label.setVisible(False)
+            self._gif_frame_widget.setVisible(False)
             return
 
         row = self._file_panel.current_row
@@ -282,6 +308,7 @@ class CompressionPage(BaseBatchPage):
         # the chosen mode, so the user understands why quality changes have no
         # visible effect on the output.
         ext = path.suffix.lstrip(".").lower()
+        self._gif_frame_widget.setVisible(ext == "gif")
         show_note = (
             ext in _ALWAYS_LOSSLESS_EXTS
             and options.mode is not CompressionMode.LOSSLESS

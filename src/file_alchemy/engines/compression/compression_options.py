@@ -15,7 +15,7 @@ _AUDIO_EXTS: frozenset[str] = frozenset(
     {"mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "aiff"}
 )
 _IMAGE_EXTS: frozenset[str] = frozenset(
-    {"png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "ico", "avif"}
+    {"png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "ico", "avif", "gif"}
 )
 
 # Audio bitrate range for quality mapping (kbps)
@@ -61,12 +61,14 @@ class CompressionOptions:
         mode:         The compression strategy.
         quality:      User-facing quality level (1–100). Only used for LOSSY.
         target_bytes: Desired output file size in bytes. Only used for TARGET_SIZE.
+        gif_frame_step: For GIFs, keep 1 out of every N frames; 1 keeps all frames.
 
     """
 
     mode: CompressionMode
     quality: int = 75
     target_bytes: int | None = None
+    gif_frame_step: int = 1
 
     # ------------------------------------------------------------------ #
     # FFmpeg argument builders
@@ -191,6 +193,8 @@ class CompressionOptions:
 
     @staticmethod
     def _pillow_lossless(ext: str) -> dict[str, object]:
+        if ext in {"gif"}:
+            return {"optimize": True}
         if ext in {"png"}:
             return {"compress_level": 9, "optimize": True}
         if ext in {"webp"}:
@@ -215,6 +219,8 @@ class CompressionOptions:
             return {"compress_level": level, "optimize": True}
         if ext in {"avif"}:
             return {"quality": self.quality}
+        if ext in {"gif"}:
+            return {"optimize": True}
         return {}
 
     # ------------------------------------------------------------------ #
@@ -235,8 +241,10 @@ class CompressionOptions:
 
         For TARGET_SIZE mode, the estimate is simply the target itself.
         For LOSSY, the estimate is derived from the input size scaled by the
-        quality ratio. For LOSSLESS, the original size is returned unmodified
-        since lossless compression has highly variable results.
+        quality ratio. For LOSSLESS, non-GIF inputs return the original size
+        since lossless compression has highly variable results. GIF estimates
+        are additionally divided by ``gif_frame_step`` because frame sampling
+        reduces the number of frames even in LOSSLESS mode.
         """
         input_path = Path(input_path)
         if not input_path.exists():
@@ -249,9 +257,14 @@ class CompressionOptions:
         if self.mode is CompressionMode.TARGET_SIZE:
             return self.target_bytes
 
+        gif_frame_ratio = 1
+        if input_path.suffix.lower() == ".gif":
+            gif_frame_ratio = max(1, self.gif_frame_step)
+
         if self.mode is CompressionMode.LOSSLESS:
-            return original_bytes
+            return max(1, int(original_bytes / gif_frame_ratio))
 
         # LOSSY: approximate output size using a quadratic quality curve.
         ratio = (self.quality / 100) ** 2
+        ratio /= gif_frame_ratio
         return max(1, int(original_bytes * ratio))

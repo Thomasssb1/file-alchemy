@@ -14,6 +14,7 @@ from file_alchemy.ui.pages.compression.compression_page import (
     CompressionPage,
     _ALWAYS_LOSSLESS_EXTS,
     _format_size,
+    _gif_frame_step_suffix,
 )
 
 # --------------------------------------------------------------------------- #
@@ -92,6 +93,7 @@ def test_initial_state(compression_page: CompressionPage) -> None:
 
     assert not compression_page._quality_widget.isVisible()
     assert not compression_page._target_widget.isVisible()
+    assert not compression_page._gif_frame_widget.isVisible()
     assert not compression_page._compress_btn.isEnabled()
     assert not compression_page._progress_bar.isVisible()
     assert compression_page._output_dir is None
@@ -129,6 +131,65 @@ def test_slider_updates_label(compression_page: CompressionPage) -> None:
     assert "42" in compression_page._quality_label.text()
 
 
+def test_gif_frame_control_visible_for_selected_gif(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    _add_files(compression_page, "animation.gif", tmp_path=tmp_path)
+    assert compression_page._gif_frame_widget.isVisible()
+
+
+def test_gif_frame_control_hidden_for_non_gif(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    _add_files(compression_page, "photo.jpg", tmp_path=tmp_path)
+    assert not compression_page._gif_frame_widget.isVisible()
+
+
+def test_gif_frame_control_tracks_selected_file(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    files = _add_files(
+        compression_page,
+        "animation.gif",
+        "photo.jpg",
+        tmp_path=tmp_path,
+    )
+    assert files[0].suffix == ".gif"
+    assert files[1].suffix == ".jpg"
+
+    compression_page._file_panel._list_widget.setCurrentRow(0)
+    assert compression_page._gif_frame_widget.isVisible()
+
+    compression_page._file_panel._list_widget.setCurrentRow(1)
+    assert not compression_page._gif_frame_widget.isVisible()
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (1, " frame"),
+        (2, " frames"),
+        (120, " frames"),
+    ],
+)
+def test_gif_frame_step_suffix(value: int, expected: str) -> None:
+    assert _gif_frame_step_suffix(value) == expected
+
+
+def test_gif_frame_control_wording_and_pluralization(
+    compression_page: CompressionPage,
+) -> None:
+    assert compression_page._gif_frame_label.text() == (
+        "GIF frame sampling: keep 1 out of every"
+    )
+    assert "keep every" not in compression_page._gif_frame_label.text()
+    assert compression_page._gif_frame_spinbox.suffix() == " frame"
+
+    compression_page._gif_frame_spinbox.setValue(3)
+
+    assert compression_page._gif_frame_spinbox.suffix() == " frames"
+
+
 # --------------------------------------------------------------------------- #
 # _get_current_options — edge cases across all 3 modes
 # --------------------------------------------------------------------------- #
@@ -161,6 +222,14 @@ def test_get_current_options_lossy_max_quality(
     compression_page._quality_slider.setValue(100)
     opts = compression_page._get_current_options()
     assert opts.quality == 100
+
+
+def test_get_current_options_includes_gif_frame_step(
+    compression_page: CompressionPage,
+) -> None:
+    compression_page._gif_frame_spinbox.setValue(3)
+    opts = compression_page._get_current_options()
+    assert opts.gif_frame_step == 3
 
 
 @pytest.mark.parametrize(
@@ -556,6 +625,20 @@ def test_worker_receives_lossy_options_when_lossy_selected(
     assert options.quality == 25
 
 
+def test_worker_receives_image_category_for_gif(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """GIF files should route through the image compressor, not FFmpeg media compression."""
+    _add_files(compression_page, "animation.gif", tmp_path=tmp_path)
+
+    compression_page._start_compression()
+
+    category = mock_compression_worker.call_args[0][3]
+    assert category == "image"
+
+
 def test_second_run_uses_updated_mode(
     compression_page: CompressionPage,
     tmp_path: Path,
@@ -938,6 +1021,45 @@ def test_estimated_size_lossless(
     compression_page._on_files_added([f])
 
     compression_page._radio_lossless.setChecked(True)
+    assert "1000 B" in compression_page._estimate_label.text()
+
+
+def test_estimated_size_gif_updates_with_frame_step(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    f = tmp_path / "animation.gif"
+    f.write_bytes(b"x" * 1000)
+    compression_page._on_files_added([f])
+
+    compression_page._gif_frame_spinbox.setValue(4)
+
+    assert "250 B" in compression_page._estimate_label.text()
+
+
+def test_estimated_size_gif_updates_after_multiple_frame_step_changes(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    f = tmp_path / "animation.gif"
+    f.write_bytes(b"x" * 1000)
+    compression_page._on_files_added([f])
+
+    compression_page._gif_frame_spinbox.setValue(2)
+    assert "500 B" in compression_page._estimate_label.text()
+
+    compression_page._gif_frame_spinbox.setValue(5)
+    assert "200 B" in compression_page._estimate_label.text()
+
+
+def test_estimated_size_non_gif_ignores_hidden_frame_step(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    f = tmp_path / "photo.jpg"
+    f.write_bytes(b"x" * 1000)
+    compression_page._on_files_added([f])
+
+    compression_page._gif_frame_spinbox.setValue(10)
+
+    assert not compression_page._gif_frame_widget.isVisible()
     assert "1000 B" in compression_page._estimate_label.text()
 
 

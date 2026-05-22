@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from file_alchemy.engines.compression.compression_mode import CompressionMode
 from file_alchemy.engines.compression.compression_options import (
     CompressionOptions,
@@ -15,6 +17,7 @@ def test_ext_category() -> None:
     assert ext_category("mp4") == "video"
     assert ext_category("mp3") == "audio"
     assert ext_category("png") == "image"
+    assert ext_category("gif") == "image"
     assert ext_category("txt") is None
 
 
@@ -111,6 +114,11 @@ class TestToPillowKwargs:
         kwargs = opts.to_pillow_kwargs("webp")
         assert "quality" in kwargs
 
+    def test_lossy_gif(self) -> None:
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=60)
+        kwargs = opts.to_pillow_kwargs("gif")
+        assert kwargs["optimize"] is True
+
 
 class TestRequiresTwoPass:
     def test_no_two_pass_for_lossless_or_lossy(self) -> None:
@@ -139,6 +147,46 @@ class TestEstimateSize:
         opts = CompressionOptions(CompressionMode.LOSSLESS)
         assert opts.estimate_size(f) == 4
 
+    def test_lossless_gif_estimate_accounts_for_frame_step(self, tmp_path) -> None:
+        f = tmp_path / "in.gif"
+        f.write_bytes(b"x" * 1000)
+        opts = CompressionOptions(
+            CompressionMode.LOSSLESS,
+            gif_frame_step=4,
+        )
+        assert opts.estimate_size(f) == 250
+
+    @pytest.mark.parametrize(
+        "frame_step, expected",
+        [
+            (-10, 1000),
+            (0, 1000),
+            (1, 1000),
+            (2, 500),
+            (999, 1),
+        ],
+    )
+    def test_gif_frame_step_estimate_handles_edge_case_numbers(
+        self, tmp_path, frame_step: int, expected: int
+    ) -> None:
+        f = tmp_path / "in.gif"
+        f.write_bytes(b"x" * 1000)
+        opts = CompressionOptions(
+            CompressionMode.LOSSLESS,
+            gif_frame_step=frame_step,
+        )
+        assert opts.estimate_size(f) == expected
+
+    @pytest.mark.parametrize("suffix", ["jpg", "png", "webp"])
+    def test_non_gif_estimate_ignores_frame_step(self, tmp_path, suffix: str) -> None:
+        f = tmp_path / f"in.{suffix}"
+        f.write_bytes(b"x" * 1000)
+        opts = CompressionOptions(
+            CompressionMode.LOSSLESS,
+            gif_frame_step=10,
+        )
+        assert opts.estimate_size(f) == 1000
+
     def test_returns_quality_ratio_for_lossy(self, tmp_path) -> None:
         f = tmp_path / "in.mp4"
         f.write_bytes(b"x" * 100)
@@ -157,6 +205,12 @@ class TestEstimateSize:
         f.write_bytes(b"x" * 1000)
         # (50/100)^2 = 0.25
         opts = CompressionOptions(CompressionMode.LOSSY, quality=50)
+        assert opts.estimate_size(f) == 250
+
+    def test_lossy_gif_estimate_accounts_for_frame_step(self, tmp_path) -> None:
+        f = tmp_path / "in.gif"
+        f.write_bytes(b"x" * 1000)
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=100, gif_frame_step=4)
         assert opts.estimate_size(f) == 250
 
     def test_lossy_quality_1_returns_at_least_1_byte(self, tmp_path) -> None:
