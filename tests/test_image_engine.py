@@ -226,6 +226,62 @@ def test_compress_gif_frame_step_skips_frames(tmp_path: Path) -> None:
         assert durations == [30, 70, 50]
 
 
+@pytest.mark.parametrize("frame_step", [-5, 0, 1])
+def test_compress_gif_frame_step_clamps_to_one(tmp_path: Path, frame_step: int) -> None:
+    """Non-positive frame steps should behave like keeping every frame."""
+    gif_path = tmp_path / f"animated_{frame_step}.gif"
+    frames = [
+        Image.new("RGB", (32, 32), color=color) for color in ("red", "blue", "green")
+    ]
+    frames[0].save(
+        gif_path,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=25,
+        loop=0,
+    )
+
+    out_path = tmp_path / f"clamped_{frame_step}.gif"
+    opts = CompressionOptions(
+        CompressionMode.LOSSY,
+        quality=80,
+        gif_frame_step=frame_step,
+    )
+
+    res = compress_image(gif_path, out_path, opts)
+
+    assert res.exists()
+    with Image.open(res) as opened:
+        assert opened.n_frames == 3
+
+
+def test_compress_gif_frame_step_larger_than_frame_count(tmp_path: Path) -> None:
+    """A frame step larger than the animation should keep the first frame only."""
+    gif_path = tmp_path / "animated.gif"
+    frames = [
+        Image.new("RGB", (32, 32), color=color) for color in ("red", "blue", "green")
+    ]
+    frames[0].save(
+        gif_path,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=[10, 20, 30],
+        loop=0,
+    )
+
+    out_path = tmp_path / "single_frame.gif"
+    opts = CompressionOptions(CompressionMode.LOSSY, quality=80, gif_frame_step=999)
+
+    res = compress_image(gif_path, out_path, opts)
+
+    assert res.exists()
+    with Image.open(res) as opened:
+        assert opened.n_frames == 1
+        assert opened.info["duration"] == 60
+
+
 def test_compress_gif_target_size_creates_output(tmp_path: Path) -> None:
     """GIF target-size mode should create a GIF using palette reduction."""
     gif_path = tmp_path / "source.gif"

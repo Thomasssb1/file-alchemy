@@ -144,6 +144,25 @@ def test_gif_frame_control_hidden_for_non_gif(
     assert not compression_page._gif_frame_widget.isVisible()
 
 
+def test_gif_frame_control_tracks_selected_file(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    files = _add_files(
+        compression_page,
+        "animation.gif",
+        "photo.jpg",
+        tmp_path=tmp_path,
+    )
+    assert files[0].suffix == ".gif"
+    assert files[1].suffix == ".jpg"
+
+    compression_page._file_panel._list_widget.setCurrentRow(0)
+    assert compression_page._gif_frame_widget.isVisible()
+
+    compression_page._file_panel._list_widget.setCurrentRow(1)
+    assert not compression_page._gif_frame_widget.isVisible()
+
+
 # --------------------------------------------------------------------------- #
 # _get_current_options — edge cases across all 3 modes
 # --------------------------------------------------------------------------- #
@@ -988,6 +1007,33 @@ def test_estimated_size_gif_updates_with_frame_step(
     compression_page._gif_frame_spinbox.setValue(4)
 
     assert "250 B" in compression_page._estimate_label.text()
+
+
+def test_estimated_size_gif_updates_after_multiple_frame_step_changes(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    f = tmp_path / "animation.gif"
+    f.write_bytes(b"x" * 1000)
+    compression_page._on_files_added([f])
+
+    compression_page._gif_frame_spinbox.setValue(2)
+    assert "500 B" in compression_page._estimate_label.text()
+
+    compression_page._gif_frame_spinbox.setValue(5)
+    assert "200 B" in compression_page._estimate_label.text()
+
+
+def test_estimated_size_non_gif_ignores_hidden_frame_step(
+    compression_page: CompressionPage, tmp_path: Path
+) -> None:
+    f = tmp_path / "photo.jpg"
+    f.write_bytes(b"x" * 1000)
+    compression_page._on_files_added([f])
+
+    compression_page._gif_frame_spinbox.setValue(10)
+
+    assert not compression_page._gif_frame_widget.isVisible()
+    assert "1000 B" in compression_page._estimate_label.text()
 
 
 def test_estimated_size_target_shows_exact_value(
