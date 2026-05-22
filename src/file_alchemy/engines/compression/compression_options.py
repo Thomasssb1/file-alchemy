@@ -15,7 +15,7 @@ _AUDIO_EXTS: frozenset[str] = frozenset(
     {"mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "aiff"}
 )
 _IMAGE_EXTS: frozenset[str] = frozenset(
-    {"png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "ico", "avif"}
+    {"png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "ico", "avif", "gif"}
 )
 
 # Audio bitrate range for quality mapping (kbps)
@@ -191,6 +191,8 @@ class CompressionOptions:
 
     @staticmethod
     def _pillow_lossless(ext: str) -> dict[str, object]:
+        if ext in {"gif"}:
+            return {"optimize": True}
         if ext in {"png"}:
             return {"compress_level": 9, "optimize": True}
         if ext in {"webp"}:
@@ -215,6 +217,8 @@ class CompressionOptions:
             return {"compress_level": level, "optimize": True}
         if ext in {"avif"}:
             return {"quality": self.quality}
+        if ext in {"gif"}:
+            return {"optimize": True}
         return {}
 
     # ------------------------------------------------------------------ #

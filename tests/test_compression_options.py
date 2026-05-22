@@ -15,6 +15,7 @@ def test_ext_category() -> None:
     assert ext_category("mp4") == "video"
     assert ext_category("mp3") == "audio"
     assert ext_category("png") == "image"
+    assert ext_category("gif") == "image"
     assert ext_category("txt") is None
 
 
@@ -110,6 +111,11 @@ class TestToPillowKwargs:
         opts = CompressionOptions(CompressionMode.TARGET_SIZE, target_bytes=100)
         kwargs = opts.to_pillow_kwargs("webp")
         assert "quality" in kwargs
+
+    def test_lossy_gif(self) -> None:
+        opts = CompressionOptions(CompressionMode.LOSSY, quality=60)
+        kwargs = opts.to_pillow_kwargs("gif")
+        assert kwargs["optimize"] is True
 
 
 class TestRequiresTwoPass:

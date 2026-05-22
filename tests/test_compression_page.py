@@ -556,6 +556,20 @@ def test_worker_receives_lossy_options_when_lossy_selected(
     assert options.quality == 25
 
 
+def test_worker_receives_image_category_for_gif(
+    compression_page: CompressionPage,
+    tmp_path: Path,
+    mock_compression_worker: MagicMock,
+) -> None:
+    """GIF files should route through the image compressor, not FFmpeg media compression."""
+    _add_files(compression_page, "animation.gif", tmp_path=tmp_path)
+
+    compression_page._start_compression()
+
+    category = mock_compression_worker.call_args[0][3]
+    assert category == "image"
+
+
 def test_second_run_uses_updated_mode(
     compression_page: CompressionPage,
     tmp_path: Path,
