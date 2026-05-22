@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 jobs:
-  build:
+  lint:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
@@ -17,27 +17,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up dev environment
+        uses: ./.github/actions/setup-python-dev
         with:
           python-version: "3.11"
-          cache: "pip"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libegl1 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 libxcb-cursor0
+      - name: Install Linux system dependencies
+        uses: ./.github/actions/install-linux-system-deps
 
       - name: Format project source
         run: ruff format --check .
 
       - name: Analyze project source
         run: ruff check .
+
+  test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up dev environment
+        uses: ./.github/actions/setup-python-dev
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux system dependencies
+        uses: ./.github/actions/install-linux-system-deps
 
       - name: Run tests and collect coverage
         run: |
