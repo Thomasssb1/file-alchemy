@@ -61,7 +61,7 @@ class CompressionOptions:
         mode:         The compression strategy.
         quality:      User-facing quality level (1–100). Only used for LOSSY.
         target_bytes: Desired output file size in bytes. Only used for TARGET_SIZE.
-        gif_frame_step: Keep every Nth GIF frame; 1 keeps all frames.
+        gif_frame_step: For GIFs, keep 1 out of every N frames; 1 keeps all frames.
 
     """
 
@@ -241,8 +241,10 @@ class CompressionOptions:
 
         For TARGET_SIZE mode, the estimate is simply the target itself.
         For LOSSY, the estimate is derived from the input size scaled by the
-        quality ratio. For LOSSLESS, the original size is returned unmodified
-        since lossless compression has highly variable results.
+        quality ratio. For LOSSLESS, non-GIF inputs return the original size
+        since lossless compression has highly variable results. GIF estimates
+        are additionally divided by ``gif_frame_step`` because frame sampling
+        reduces the number of frames even in LOSSLESS mode.
         """
         input_path = Path(input_path)
         if not input_path.exists():
