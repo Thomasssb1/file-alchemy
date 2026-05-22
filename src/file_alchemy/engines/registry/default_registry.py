@@ -16,7 +16,7 @@ _AUDIO_EXTS: frozenset[str] = frozenset(
     {"mp3", "wav", "flac", "aac", "ogg", "m4a", "wma", "opus", "aiff"}
 )
 _IMAGE_EXTS: frozenset[str] = frozenset(
-    {"png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "ico", "avif"}
+    {"png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp", "ico", "icns", "avif"}
 )
 
 # Map a category name to the set of extensions that belong to it.
@@ -28,7 +28,14 @@ CATEGORY_EXTS: dict[str, frozenset[str]] = {
 
 # Cross-format conversions supported by FFmpeg (e.g. video → gif, video → mp3).
 _CROSS_CONVERSIONS: dict[str, set[str]] = {
-    "Video": {"gif", "mp3", "aac", "wav"},  # strip audio or make gif
+    "Video": {
+        "gif",
+        "mp3",
+        "aac",
+        "wav",
+        "ico",
+        "icns",
+    },  # strip audio or make gif/icon
     "Audio": set(),  # audio → video not supported here
     "Image": set(),  # image → video out of scope
 }
@@ -50,6 +57,7 @@ def _category_of(ext: str) -> str | None:
 def _build_default_registry() -> ConversionRegistry:
     """Build and return the application-wide default registry."""
     from file_alchemy.engines.media_engine import convert as _ffmpeg_convert
+    from file_alchemy.engines.media_engine import convert_to_icon as _icon_convert
 
     registry = ConversionRegistry()
 
@@ -61,12 +69,17 @@ def _build_default_registry() -> ConversionRegistry:
             for out_ext in exts:
                 if in_ext == out_ext:
                     continue
+
+                engine_fn = (
+                    _icon_convert if out_ext in {"ico", "icns"} else _ffmpeg_convert
+                )
+
                 registry.register(
                     ConversionRoute(
                         input_ext=in_ext,
                         output_ext=out_ext,
                         category=category,
-                        engine_fn=_ffmpeg_convert,
+                        engine_fn=engine_fn,
                     )
                 )
             # Cross-category conversions (e.g. video → gif, video → mp3)
@@ -74,12 +87,17 @@ def _build_default_registry() -> ConversionRegistry:
                 if out_ext == in_ext:
                     continue
                 out_category = _category_of(out_ext) or category
+
+                engine_fn = (
+                    _icon_convert if out_ext in {"ico", "icns"} else _ffmpeg_convert
+                )
+
                 registry.register(
                     ConversionRoute(
                         input_ext=in_ext,
                         output_ext=out_ext,
                         category=out_category,
-                        engine_fn=_ffmpeg_convert,
+                        engine_fn=engine_fn,
                     )
                 )
 

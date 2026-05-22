@@ -7,12 +7,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from file_alchemy.engines.registry import (
+    DEFAULT_REGISTRY,
     ConversionRegistry,
     ConversionRoute,
-    DEFAULT_REGISTRY,
     _category_of,
 )
-
 
 # --------------------------------------------------------------------------- #
 # ConversionRoute

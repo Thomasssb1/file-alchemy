@@ -1,8 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import sys
+
+app_script = os.path.join('src', 'file_alchemy', 'app.py')
+
+# Platform-agnostic icon selection
+if sys.platform == 'darwin':
+    icon_file = 'logo.icns'
+elif sys.platform == 'win32':
+    icon_file = 'logo.ico'
+else:
+    icon_file = 'logo.png'
+
+icon_path = os.path.join('assets', icon_file)
+if not os.path.exists(icon_path):
+    icon_path = os.path.join('assets', 'logo.ico')
 
 
 a = Analysis(
-    ['src\\file_alchemy\\app.py'],
+    [app_script],
     pathex=[],
     binaries=[],
     datas=[('assets', 'assets')],
@@ -32,7 +48,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets\\logo.ico'],
+    icon=[icon_path],
 )
 coll = COLLECT(
     exe,

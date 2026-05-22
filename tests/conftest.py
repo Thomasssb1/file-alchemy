@@ -2,12 +2,20 @@
 
 import os
 import shutil
+from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PIL import Image
+from pytestqt.qtbot import QtBot
 
 from file_alchemy.engines import media_engine
 from file_alchemy.engines.registry import ConversionRegistry
+
+if TYPE_CHECKING:
+    from file_alchemy.ui.components import DropZone, FileListPanel, ResultsPanel
+    from file_alchemy.ui.pages.compression.compression_page import CompressionPage
 
 # Use Qt's offscreen platform when no display is available (CI / headless).
 # setdefault means this is a no-op when a real display is already configured.
@@ -39,3 +47,68 @@ def empty_registry() -> ConversionRegistry:
 def mock_engine_fn() -> MagicMock:
     """Return a generic mocked engine function."""
     return MagicMock()
+
+
+@pytest.fixture
+def dummy_image(tmp_path: Path) -> Path:
+    """Create a 100x100 RGB JPEG image."""
+    img_path = tmp_path / "test.jpg"
+    img = Image.new("RGB", (100, 100), color="red")
+    img.save(img_path, format="JPEG")
+    return img_path
+
+
+@pytest.fixture
+def results_panel(qtbot) -> "ResultsPanel":
+    from file_alchemy.ui.components import ResultsPanel
+
+    panel = ResultsPanel()
+    qtbot.addWidget(panel)
+    panel.show()
+    return panel
+
+
+@pytest.fixture
+def drop_zone(qtbot) -> "DropZone":
+    from file_alchemy.ui.components import DropZone
+
+    mock_callback = MagicMock()
+    dz = DropZone(files_callback=mock_callback)
+    dz._mock_cb = mock_callback  # Attach for assertions
+    qtbot.addWidget(dz)
+    return dz
+
+
+@pytest.fixture
+def file_list_panel(qtbot) -> "FileListPanel":
+    from file_alchemy.ui.components import FileListPanel
+
+    panel = FileListPanel()
+    qtbot.addWidget(panel)
+    panel.show()
+    return panel
+
+
+@pytest.fixture()
+def compression_page(qtbot: QtBot) -> "CompressionPage":
+    """Create a CompressionPage and register it with qtbot for cleanup."""
+    from file_alchemy.ui.pages.compression.compression_page import CompressionPage
+
+    p = CompressionPage()
+    qtbot.addWidget(p)
+    p.show()
+    return p
+
+
+@pytest.fixture()
+def mock_compression_worker():
+    """Patch CompressionWorker so _start_compression never spawns a thread."""
+    with patch(
+        "file_alchemy.ui.pages.compression.compression_page.CompressionWorker"
+    ) as cls:
+        mock_w = MagicMock()
+        mock_w.progress = MagicMock()
+        mock_w.finished = MagicMock()
+        mock_w.error = MagicMock()
+        cls.return_value = mock_w
+        yield cls

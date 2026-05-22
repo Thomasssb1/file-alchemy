@@ -2,21 +2,14 @@
 
 from __future__ import annotations
 
-from collections import deque
-from collections.abc import Callable
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
-    QFileDialog,
-    QFrame,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -24,8 +17,8 @@ from qfluentwidgets import (
     FluentIcon,
     InfoBar,
     InfoBarPosition,
-    ProgressBar,
     PrimaryPushButton,
+    ProgressBar,
     PushButton,
     StrongBodyLabel,
     TitleLabel,
@@ -33,79 +26,15 @@ from qfluentwidgets import (
 
 from file_alchemy.engines.registry import (
     DEFAULT_REGISTRY,
-    ConversionRoute,
     _category_of,
 )
-from file_alchemy.ui.workers import ConversionWorker
+from file_alchemy.ui.components import DropZone, FileListPanel
+from file_alchemy.ui.components.results.results_panel import ResultsPanel
+from file_alchemy.ui.pages.base_page import BaseBatchPage
+from file_alchemy.ui.pages.media.conversion_worker import ConversionWorker
 
 
-class _DropZone(QFrame):
-    """Drag-and-drop target that also shows a file-open button."""
-
-    def __init__(
-        self,
-        files_callback: Callable[[list[Path]], None],
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._files_callback = files_callback
-
-        self.setAcceptDrops(True)
-        self.setMinimumHeight(120)
-        self.setObjectName("dropZone")
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet(
-            "#dropZone {"
-            "  border: 2px dotted #6366f1;"
-            "  border-radius: 8px;"
-            "  background: rgba(99, 102, 241, 0.09);"
-            "}"
-            "#dropZone:hover {"
-            "  border-color: #818cf8;"
-            "  background: rgba(99, 102, 241, 0.16);"
-            "}"
-        )
-
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(8)
-
-        icon_label = QLabel("📂")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setStyleSheet("font-size: 32px;")
-        layout.addWidget(icon_label)
-
-        hint = QLabel("Drop files here  or")
-        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet("color: #999; font-size: 13px;")
-        layout.addWidget(hint)
-
-        self._browse_btn = PushButton("Browse…")
-        self._browse_btn.setFixedWidth(110)
-        layout.addWidget(self._browse_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self._browse_btn.clicked.connect(self._open_file_dialog)
-
-    def _open_file_dialog(self) -> None:
-        paths, _ = QFileDialog.getOpenFileNames(self, "Select files")
-        if paths:
-            self._files_callback([Path(p) for p in paths])
-
-    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # type: ignore[override]
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent) -> None:  # type: ignore[override]
-        urls = event.mimeData().urls()
-        paths = [Path(u.toLocalFile()) for u in urls if u.isLocalFile()]
-        if paths:
-            event.acceptProposedAction()
-            self._files_callback(paths)
-        else:
-            event.ignore()
-
-
-class MediaPage(QWidget):
+class MediaPage(BaseBatchPage):
     """Media conversion page with batch file selection and format picker.
 
     Features:
@@ -115,15 +44,11 @@ class MediaPage(QWidget):
     - Success/error InfoBar notifications
     """
 
+    _error_title = "Conversion failed"
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MediaPage")
-        self._current_worker: ConversionWorker | None = None
-        self._queue: deque[tuple[Path, Path, ConversionRoute]] = deque()
-        self._input_files: list[Path] = []
-        self._output_dir: Path | None = None
-        self._pending: int = 0
-        self._batch_total: int = 0
         self._setup_ui()
 
     # ------------------------------------------------------------------ #
@@ -138,7 +63,7 @@ class MediaPage(QWidget):
         title = TitleLabel("Media Converter")
         root.addWidget(title)
 
-        self._drop_zone = _DropZone(files_callback=self._on_files_added)
+        self._drop_zone = DropZone(files_callback=self._on_files_added)
         root.addWidget(self._drop_zone)
 
         list_and_controls = QHBoxLayout()
@@ -153,25 +78,22 @@ class MediaPage(QWidget):
         self._progress_bar.setVisible(False)
         root.addWidget(self._progress_bar)
 
+        self._results_panel = ResultsPanel()
+        root.addWidget(self._results_panel)
+
         root.addStretch()
 
     def _build_file_list_column(self, parent_layout: QHBoxLayout) -> None:
-        col = QVBoxLayout()
-        col.setSpacing(6)
-        col.addWidget(StrongBodyLabel("Selected files"))
+        self._file_panel = FileListPanel()
+        self._file_panel.selectionChanged.connect(self._on_selection_changed)
+        self._file_panel.listCleared.connect(self._on_list_cleared)
+        parent_layout.addWidget(self._file_panel, stretch=3)
 
-        self._file_list = QListWidget()
-        self._file_list.setMinimumHeight(150)
-        self._file_list.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        self._file_list.currentRowChanged.connect(self._on_selection_changed)
-        col.addWidget(self._file_list)
-
-        clear_btn = PushButton(FluentIcon.DELETE, "Clear list")
-        clear_btn.clicked.connect(self._clear_files)
-        col.addWidget(clear_btn)
-        parent_layout.addLayout(col, stretch=3)
+    def _on_list_cleared(self) -> None:
+        if hasattr(self, "_format_combo"):
+            self._format_combo.clear()
+        if hasattr(self, "_convert_btn"):
+            self._convert_btn.setEnabled(False)
 
     def _build_controls_column(self, parent_layout: QHBoxLayout) -> None:
         col = QVBoxLayout()
@@ -182,28 +104,35 @@ class MediaPage(QWidget):
         self._format_combo = QComboBox()
         self._format_combo.setMinimumWidth(180)
         self._format_combo.setStyleSheet(
-            "QComboBox {"
-            "  background: #2d2d2d;"
-            "  color: #ffffff;"
-            "  border: 1px solid #3d3d3d;"
-            "  border-radius: 5px;"
-            "  padding: 4px 8px;"
-            "  font-size: 13px;"
-            "}"
-            "QComboBox::drop-down { border: none; }"
-            "QComboBox QAbstractItemView {"
-            "  background: #2d2d2d;"
-            "  color: #ffffff;"
-            "  selection-background-color: #404040;"
-            "  border: 1px solid #3d3d3d;"
-            "}"
+            """
+            QComboBox {
+              background: #2d2d2d;
+              color: #ffffff;
+              border: 1px solid #3d3d3d;
+              border-radius: 5px;
+              padding: 4px 8px;
+              font-size: 13px;
+            }
+            QComboBox::drop-down { border: none; }
+            QComboBox QAbstractItemView {
+              background: #2d2d2d;
+              color: #ffffff;
+              selection-background-color: #404040;
+              border: 1px solid #3d3d3d;
+            }
+            """
         )
         col.addWidget(self._format_combo)
 
         col.addSpacing(8)
 
         self._output_dir_label = QLabel("Output: same folder as input")
-        self._output_dir_label.setStyleSheet("color: #888; font-size: 12px;")
+        self._output_dir_label.setStyleSheet(
+            """
+            color: #888;
+            font-size: 12px;
+            """
+        )
         col.addWidget(self._output_dir_label)
 
         pick_output_btn = PushButton(FluentIcon.FOLDER, "Choose output folder…")
@@ -224,24 +153,16 @@ class MediaPage(QWidget):
     # ------------------------------------------------------------------ #
 
     def _on_files_added(self, paths: list[Path]) -> None:
-        for path in paths:
-            if path not in self._input_files:
-                self._input_files.append(path)
-                self._file_list.addItem(QListWidgetItem(path.name))
-
-        if self._input_files and self._file_list.currentRow() < 0:
-            self._file_list.setCurrentRow(0)
-
-    def _clear_files(self) -> None:
-        self._input_files.clear()
-        self._file_list.clear()
-        self._format_combo.clear()
-        self._convert_btn.setEnabled(False)
+        self._file_panel.add_files(paths)
+        if self._file_panel.count == 1:
+            # Force a re-evaluation on the first file since currentRowChanged might not fire inherently if pre-selected
+            self._repopulate_format_combo(self._file_panel.files[0])
 
     def _on_selection_changed(self, row: int) -> None:
-        if row < 0 or row >= len(self._input_files):
+        files = self._file_panel.files
+        if row < 0 or row >= len(files):
             return
-        self._repopulate_format_combo(self._input_files[row])
+        self._repopulate_format_combo(files[row])
 
     # ------------------------------------------------------------------ #
     # Format ComboBox - grouped by category
@@ -301,12 +222,6 @@ class MediaPage(QWidget):
     # Output directory
     # ------------------------------------------------------------------ #
 
-    def _pick_output_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Choose output folder")
-        if directory:
-            self._output_dir = Path(directory)
-            self._output_dir_label.setText(f"Output: {self._output_dir}")
-
     def _resolve_output_path(self, input_path: Path, out_ext: str) -> Path:
         base = self._output_dir or input_path.parent
         return base / f"{input_path.stem}.{out_ext}"
@@ -317,7 +232,8 @@ class MediaPage(QWidget):
 
     def _start_conversion(self) -> None:
         out_ext = self._format_combo.currentText()
-        if not out_ext or out_ext.startswith("──") or not self._input_files:
+        files = self._file_panel.files
+        if not out_ext or out_ext.startswith("──") or not files:
             return
 
         self._convert_btn.setEnabled(False)
@@ -326,7 +242,7 @@ class MediaPage(QWidget):
 
         self._queue.clear()
 
-        for input_path in self._input_files:
+        for input_path in files:
             in_ext = input_path.suffix.lstrip(".").lower()
             route = DEFAULT_REGISTRY.get_route(in_ext, out_ext)
             if route is None:
@@ -358,13 +274,11 @@ class MediaPage(QWidget):
         self._current_worker.error.connect(self._on_error)
         self._current_worker.start()
 
-    def _on_progress(self, pct: float) -> None:
-        if self._batch_total > 0:
-            completed = self._batch_total - self._pending
-            overall_pct = ((completed * 100) + pct) / self._batch_total
-            self._progress_bar.setValue(int(overall_pct))
-
     def _on_finished(self, output_path: Path) -> None:
+        self._results_panel.add_success(
+            output_path.name, folder_path=output_path.parent
+        )
+
         InfoBar.success(
             title="Done",
             content=f"Saved: {output_path.name}",
@@ -376,25 +290,10 @@ class MediaPage(QWidget):
         )
         self._complete_one()
 
-    def _on_error(self, message: str) -> None:
-        self._show_error(message)
-        self._complete_one()
-
-    def _complete_one(self) -> None:
-        """Decrement the pending counter and run next or reset UI."""
-        if self._current_worker:
-            self._current_worker.deleteLater()
-            self._current_worker = None
-
-        self._pending -= 1
-        if self._pending <= 0:
-            self._reset_after_batch()
-        else:
-            self._run_next_in_queue()
-
     def _show_error(self, message: str) -> None:
+        """Display an error InfoBar without a results entry (used for skipped files)."""
         InfoBar.error(
-            title="Conversion failed",
+            title=self._error_title,
             content=message,
             orient=Qt.Orientation.Horizontal,
             isClosable=True,
@@ -403,9 +302,7 @@ class MediaPage(QWidget):
             parent=self,
         )
 
-    def _reset_after_batch(self) -> None:
-        self._progress_bar.setVisible(False)
-        self._progress_bar.setValue(0)
+    def _restore_action_button(self) -> None:
         out_ext = self._format_combo.currentText()
         has_valid_ext = bool(out_ext and not out_ext.startswith("──"))
-        self._convert_btn.setEnabled(bool(self._input_files) and has_valid_ext)
+        self._convert_btn.setEnabled(self._file_panel.count > 0 and has_valid_ext)
